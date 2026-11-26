@@ -11,15 +11,23 @@ import (
 )
 
 type tickOutcome struct {
-	room      *Room
-	started   bool
-	ended     bool
-	events    []protocol.GameEvent
-	snapshot  protocol.Snapshot
-	playing   bool
-	endsAt    int64
-	broadcast bool
+	room              *Room
+	started           bool
+	ended             bool
+	events            []protocol.GameEvent
+	snapshot          protocol.Snapshot
+	playing           bool
+	endsAt            int64
+	broadcast         bool
+	roomStateInterval int64
 }
+
+const (
+	// idleRoomStateTicks 是大厅/对局结束状态广播 room_state 的间隔。
+	idleRoomStateTicks = int64(6)
+	// playingRoomStateTicks 是对局中广播 room_state 的间隔（2Hz），对局内状态已由 snapshot 承载。
+	playingRoomStateTicks = int64(30)
+)
 
 func (m *Manager) Tick(now int64) {
 	dt := 1 / float64(m.data.TickRate)
@@ -35,16 +43,14 @@ func (m *Manager) Tick(now int64) {
 	for _, room := range rooms {
 		outcomes = append(outcomes, m.stepRoomLocked(room, now, dt))
 	}
-	roomStates := make([]*Room, 0, len(m.Rooms))
-	for _, room := range m.Rooms {
-		roomStates = append(roomStates, room)
-	}
 	m.mu.Unlock()
 
-	if pruned || m.tickCount%6 == 0 {
+	if pruned || m.tickCount%idleRoomStateTicks == 0 {
 		m.BroadcastRoomList()
-		for _, room := range roomStates {
-			m.BroadcastRoomState(room)
+	}
+	for _, outcome := range outcomes {
+		if m.tickCount%outcome.roomStateInterval == 0 {
+			m.BroadcastRoomState(outcome.room)
 		}
 	}
 
@@ -79,6 +85,11 @@ func (m *Manager) pruneDisconnectedLocked(now int64) bool {
 
 func (m *Manager) stepRoomLocked(room *Room, now int64, dt float64) tickOutcome {
 	outcome := tickOutcome{room: room, events: make([]protocol.GameEvent, 0)}
+	if room.State == "playing" {
+		outcome.roomStateInterval = playingRoomStateTicks
+	} else {
+		outcome.roomStateInterval = idleRoomStateTicks
+	}
 
 	if room.State == "lobby" && room.StartsAt != nil && now >= *room.StartsAt {
 		startMatch(room, now, m.data)

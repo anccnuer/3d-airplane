@@ -66,7 +66,7 @@ export const SPAWN_POINTS: Vec3[] = SPAWN_DESK_INDICES.map((index) => {
   const desk = DESK_COLLIDERS[index];
   return [
     (desk.min[0] + desk.max[0]) / 2,
-    desk.max[1] + PLAYER_RADIUS + 0.05,
+    desk.max[1] + PLAYER_RADIUS + 0.25,
     (desk.min[2] + desk.max[2]) / 2
   ];
 });

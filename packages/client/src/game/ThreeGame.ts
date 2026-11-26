@@ -6,6 +6,7 @@ import {
   forwardFromRotation,
   getPlane,
   type GameEvent,
+  type PlayerState,
   type PublicPlayer,
   type RoomInfo,
   type Snapshot,
@@ -71,6 +72,9 @@ export class ThreeGame {
   private frameId = 0;
   private hudAccumulator = 0;
   private inputSendAccumulator = 0;
+  private lastLocalState: PlayerState | null = null;
+  private serverClockOffsetMs = 0;
+  private hasServerClock = false;
   private readonly resizeObserver: ResizeObserver;
 
   constructor(
@@ -116,10 +120,12 @@ export class ThreeGame {
   };
 
   setLocalPlayer(playerId: string, planeId: string): void {
+    if (this.localId && this.localId === playerId) return;
     this.localId = playerId;
     this.renderState.configureLocal(playerId);
     this.renderState.reset();
     this.input.resetMotion();
+    this.lastLocalState = null;
   }
 
   setRoomInfo(room: RoomInfo): void {
@@ -133,7 +139,27 @@ export class ThreeGame {
     });
   }
 
+  private serverNow(): number {
+    return Date.now() + this.serverClockOffsetMs;
+  }
+
+  private trackServerClock(serverTime: number): void {
+    const observed = serverTime - Date.now();
+    if (!this.hasServerClock) {
+      this.serverClockOffsetMs = observed;
+      this.hasServerClock = true;
+      return;
+    }
+    this.serverClockOffsetMs = clamp(
+      this.serverClockOffsetMs + (observed - this.serverClockOffsetMs) * 0.1,
+      -5000,
+      5000
+    );
+  }
+
   applySnapshot(snapshot: Snapshot): void {
+    this.trackServerClock(snapshot.serverTime);
+
     const previous = this.renderState.getLocalState();
     const wasParked = previous?.parked ?? false;
 
@@ -195,7 +221,7 @@ export class ThreeGame {
 
   private syncPlaneMeshes(players: ReturnType<RenderStateSystem['getPlayers']>, dt: number): void {
     const seen = new Set<string>();
-    const now = Date.now();
+    const now = this.serverNow();
 
     for (const player of players) {
       seen.add(player.id);
@@ -271,23 +297,25 @@ export class ThreeGame {
 
   private buildHud(): HudState {
     const local = this.renderState.getLocalState();
+    if (local) this.lastLocalState = local;
+    const source = local ?? this.lastLocalState;
     const meta = this.roomInfo?.players.find((player) => player.id === this.localId);
     const maxHp = getPlane(meta?.planeId ?? 'sparrow').hp;
-    const now = Date.now();
-    const respawnAt = local?.respawnAt ?? 0;
-    const alive = !local || local.alive || respawnAt <= now;
+    const now = this.serverNow();
+    const respawnAt = source?.respawnAt ?? 0;
+    const alive = !source || source.alive || respawnAt <= now;
 
     return {
-      hp: Math.max(0, Math.round(local?.hp ?? 0)),
+      hp: Math.max(0, Math.round(source?.hp ?? 0)),
       maxHp,
-      speed: Math.round((local?.speed ?? 0) * 3.6),
-      altitude: Math.max(0, Math.round(local?.position[1] ?? 0)),
+      speed: Math.round((source?.speed ?? 0) * 3.6),
+      altitude: Math.max(0, Math.round(source?.position[1] ?? 0)),
       score: meta?.score ?? 0,
       kills: meta?.kills ?? 0,
       alive,
       respawnIn: alive ? 0 : Math.max(0, (respawnAt - now) / 1000),
-      invulnerable: (local?.invulnerableUntil ?? 0) > now,
-      parked: local?.parked ?? false,
+      invulnerable: (source?.invulnerableUntil ?? 0) > now,
+      parked: source?.parked ?? false,
       timeLeft: Math.max(0, Math.round(((this.roomInfo?.endsAt ?? now) - now) / 1000))
     };
   }

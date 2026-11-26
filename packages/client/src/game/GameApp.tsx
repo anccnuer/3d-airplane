@@ -54,12 +54,19 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
     };
   }, [net]);
 
+  const localPlayer = room?.players.find((player) => player.id === net.playerId) ?? null;
+  const localPlayerId = localPlayer?.id ?? '';
+  const localPlaneId = localPlayer?.planeId ?? '';
+
   useEffect(() => {
     if (!room) return;
     gameRef.current?.setRoomInfo(room);
-    const local = room.players.find((player) => player.id === net.playerId);
-    if (local) gameRef.current?.setLocalPlayer(local.id, local.planeId);
-  }, [room, net]);
+  }, [room]);
+
+  useEffect(() => {
+    if (!localPlayerId) return;
+    gameRef.current?.setLocalPlayer(localPlayerId, localPlaneId);
+  }, [localPlayerId, localPlaneId, net]);
 
   useEffect(() => {
     const offSnapshot = net.on('snapshot', (message) => {

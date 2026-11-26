@@ -6,23 +6,53 @@ export default {
   theme: {
     extend: {
       colors: {
-        arena: {
-          background: '#0B1220',
-          panel: '#111C2E',
+        // 全部映射到 styles.css 中定义的 CSS 变量，保证令牌单一来源
+        shell: 'var(--shell-ink)',
+        surface: {
+          DEFAULT: 'var(--surface)',
+          solid: 'var(--surface-solid)',
+          inset: 'var(--surface-inset)',
+          raised: 'var(--surface-raised)'
+        },
+        line: {
+          DEFAULT: 'var(--border)',
+          strong: 'var(--border-strong)'
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          soft: 'var(--accent-soft)'
+        },
+        sky: {
+          DEFAULT: 'var(--sky)',
+          soft: 'var(--sky-soft)'
+        },
+        success: 'var(--success)',
+        danger: 'var(--danger)',
+        ink: {
+          DEFAULT: 'var(--text)',
+          muted: 'var(--text-muted)',
+          dim: 'var(--text-dim)'
+        },
+        dusk: 'var(--dusk)',
+        // 战机糖果色：内容色，不作为界面强调色
+        candy: {
           cyan: '#22D3EE',
           amber: '#F59E0B',
-          violet: '#6366F1',
-          text: '#F8FAFC',
-          muted: '#94A3B8'
+          violet: '#A78BFA',
+          green: '#34D399',
+          rose: '#FB7185'
         }
       },
       fontFamily: {
-        sans: ['"Noto Sans SC"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', '"Consolas"', 'monospace']
+        display: ['var(--font-display)'],
+        title: ['var(--font-title)'],
+        sans: ['var(--font-body)'],
+        label: ['var(--font-label)'],
+        mono: ['var(--font-mono)']
       },
       boxShadow: {
-        glow: '0 0 24px rgba(34, 211, 238, 0.28)',
-        amber: '0 0 24px rgba(245, 158, 11, 0.25)'
+        glow: '0 0 24px rgba(232, 163, 61, 0.28)',
+        panel: '0 18px 40px rgba(0, 0, 0, 0.45)'
       },
       keyframes: {
         'fade-up': {

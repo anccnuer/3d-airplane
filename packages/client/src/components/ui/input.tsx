@@ -21,13 +21,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'h-11 w-full rounded-lg border border-white/10 bg-[#0B1220]/80 px-4 text-sm text-slate-100 outline-none transition-colors',
-            'placeholder:text-slate-500 hover:border-white/20 focus:border-cyan-300/70 focus:ring-2 focus:ring-cyan-400/20',
+            'h-11 w-full rounded-lg border border-line bg-surface-inset px-4 text-sm text-ink outline-none transition-colors',
+            'placeholder:text-ink-dim hover:border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/25',
             className
           )}
           {...props}
         />
-        {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+        {hint ? <p className="text-xs text-ink-dim">{hint}</p> : null}
       </div>
     );
   }

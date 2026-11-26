@@ -1,7 +1,8 @@
 import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react';
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { getPlane, type Standing } from '@classroom-arena/shared';
+import { PLAYER_COLORS, getPlane, type Standing } from '@classroom-arena/shared';
 import { Button } from '../components/ui/button';
+import { Panel } from '../components/ui/panel';
+import { SectionHeader } from '../components/ui/sectionHeader';
 import { cn } from '../lib/utils';
 
 interface ResultPanelProps {
@@ -12,7 +13,7 @@ interface ResultPanelProps {
   onLeave: () => void;
 }
 
-const CHART_COLORS = ['#22D3EE', '#F59E0B', '#A78BFA', '#34D399'];
+const PODIUM_TONES = ['text-accent', 'text-sky', 'text-ink-muted'];
 
 export function ResultPanel({
   standings,
@@ -22,33 +23,25 @@ export function ResultPanel({
   onLeave
 }: ResultPanelProps) {
   const winner = standings[0];
-  const chartData = standings.map((standing) => ({
-    name: standing.name,
-    damage: standing.damage,
-    color: getPlane(standing.planeId).color
-  }));
+  const maxDamage = Math.max(1, ...standings.map((standing) => standing.damage));
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0B1220]">
-      <div className="arena-grid pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
-      <div
-        className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[760px] -translate-x-1/2 rounded-full bg-amber-400/10 blur-[120px]"
-        aria-hidden="true"
-      />
-
-      <main className="relative z-10 mx-auto flex min-h-screen max-w-[1080px] flex-col justify-center px-6 py-12">
-        <section className="glass-panel animate-fade-up rounded-2xl p-8">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <div className="relative min-h-screen overflow-hidden">
+      <main className="relative z-10 mx-auto flex min-h-screen max-w-[1120px] flex-col justify-center px-6 py-12">
+        <Panel index="REPORT" className="animate-fade-up">
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-accent/40 bg-accent-soft text-accent">
                 <Trophy size={24} aria-hidden="true" />
               </div>
               <div>
-                <p className="label-caps !text-amber-300">对局结束</p>
-                <h1 className="mt-1 text-3xl font-bold text-white">
+                <p className="label-caps !text-accent">对局结束</p>
+                <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
                   {winner ? `${winner.name} 获得制空权` : '本场对局结束'}
                 </h1>
-                <p className="mt-1 text-sm text-slate-400">飞行时长 {Math.round(durationSeconds / 60)} 分钟 · 自由对战</p>
+                <p className="mt-1 font-mono text-xs text-ink-muted">
+                  飞行时长 {Math.round(durationSeconds / 60)} 分钟 · 自由对战
+                </p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -63,61 +56,97 @@ export function ResultPanel({
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-6 lg:flex-row">
-            <div className="flex-1 overflow-hidden rounded-xl border border-white/10">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-white/[0.04] text-xs text-slate-400">
-                  <tr>
-                    <th className="px-4 py-3">名次</th>
-                    <th className="px-4 py-3">飞行员</th>
-                    <th className="px-4 py-3">机型</th>
-                    <th className="px-4 py-3 text-right">击坠</th>
-                    <th className="px-4 py-3 text-right">积分</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {standings.map((standing, index) => (
-                    <tr
+          {standings.length > 0 ? (
+            <div className="mt-8 flex flex-col gap-8 lg:flex-row">
+              <div className="flex-1">
+                <SectionHeader index="01" label="名次" />
+                <div className="mt-4 flex flex-col gap-3">
+                  {standings.slice(0, 3).map((standing, index) => (
+                    <div
                       key={standing.id}
                       className={cn(
-                        'border-t border-white/5',
-                        standing.id === playerId ? 'bg-cyan-400/[0.07]' : ''
+                        'flex items-center gap-4 rounded-xl border p-4',
+                        index === 0
+                          ? 'border-accent/40 bg-accent-soft'
+                          : 'border-line bg-surface-raised'
                       )}
                     >
-                      <td className="px-4 py-3 font-mono text-slate-400">{String(index + 1).padStart(2, '0')}</td>
-                      <td className="px-4 py-3 font-semibold text-white">{standing.name}</td>
-                      <td className="px-4 py-3 text-slate-400">{getPlane(standing.planeId).name}</td>
-                      <td className="px-4 py-3 text-right font-mono text-amber-300">{standing.kills}</td>
-                      <td className="px-4 py-3 text-right font-mono text-cyan-300">{standing.score}</td>
-                    </tr>
+                      <span
+                        className={cn(
+                          'font-display w-12 shrink-0 text-3xl font-bold tabular-nums',
+                          PODIUM_TONES[index] ?? 'text-ink-muted'
+                        )}
+                      >
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink">{standing.name}</p>
+                        <p className="mt-0.5 truncate text-xs text-ink-muted">{getPlane(standing.planeId).name}</p>
+                      </div>
+                      <span className="shrink-0 font-mono text-sm font-semibold text-accent">{standing.score}</span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
 
-            <div className="w-full rounded-xl border border-white/10 bg-black/20 p-4 lg:w-[360px]">
-              <p className="label-caps !text-slate-400">造成伤害</p>
-              <div className="mt-3 h-[240px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                      contentStyle={{ background: '#111C2E', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8 }}
-                      labelStyle={{ color: '#F8FAFC' }}
-                    />
-                    <Bar dataKey="damage" name="伤害" radius={[6, 6, 0, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                <div className="instrument-grid mt-8 overflow-hidden rounded-xl border border-line">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-inset/70 font-mono text-xs text-ink-muted">
+                      <tr>
+                        <th className="px-4 py-3">名次</th>
+                        <th className="px-4 py-3">飞行员</th>
+                        <th className="px-4 py-3">机型</th>
+                        <th className="px-4 py-3 text-right">击坠</th>
+                        <th className="px-4 py-3 text-right">积分</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.map((standing, index) => (
+                        <tr
+                          key={standing.id}
+                          className={cn(
+                            'border-t border-line',
+                            standing.id === playerId ? 'bg-accent-soft/40' : ''
+                          )}
+                        >
+                          <td className="px-4 py-3 font-mono text-ink-muted">
+                            {String(index + 1).padStart(2, '0')}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-ink">{standing.name}</td>
+                          <td className="px-4 py-3 text-ink-muted">{getPlane(standing.planeId).name}</td>
+                          <td className="px-4 py-3 text-right font-mono text-sky">{standing.kills}</td>
+                          <td className="px-4 py-3 text-right font-mono text-accent">{standing.score}</td>
+                        </tr>
                       ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="w-full lg:w-[360px]">
+                <SectionHeader index="02" label="造成伤害" />
+                <div className="instrument-grid mt-4 flex flex-col gap-4 rounded-xl border border-line bg-surface-inset/60 p-4">
+                  {standings.map((standing, index) => {
+                    const color = PLAYER_COLORS[index % PLAYER_COLORS.length];
+                    const ratio = Math.min(1, standing.damage / maxDamage);
+                    return (
+                      <div key={standing.id} className="flex items-center gap-3">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+                        <span className="w-20 shrink-0 truncate text-xs text-ink-muted">{standing.name}</span>
+                        <div className="instrument-grid h-2.5 flex-1 overflow-hidden rounded-full bg-surface-inset">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.round(ratio * 100)}%`, backgroundColor: color }}
+                          />
+                        </div>
+                        <span className="w-10 shrink-0 text-right font-mono text-xs text-ink">{standing.damage}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          ) : null}
+        </Panel>
       </main>
     </div>
   );

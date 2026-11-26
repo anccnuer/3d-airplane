@@ -2,10 +2,106 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Oswald';
+  src: url('/fonts/oswald-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  src: url('/fonts/oswald-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  src: url('/fonts/oswald-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  src: url('/fonts/oswald-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ZCOOL QingKe HuangYou';
+  src: url('/fonts/zcool-qingke-huangyou.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+4E00-9FFF, U+3000-303F, U+FF00-FFEF;
+}
+
 @layer base {
   :root {
     color-scheme: dark;
-    font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+
+    /* 外壳与表面 */
+    --shell-ink: #0c1418;
+    --surface: rgba(18, 28, 34, 0.74);
+    --surface-solid: #131e24;
+    --surface-inset: rgba(8, 14, 18, 0.62);
+    --surface-raised: rgba(26, 38, 45, 0.86);
+    --border: rgba(186, 230, 253, 0.14);
+    --border-strong: rgba(186, 230, 253, 0.3);
+
+    /* 强调色：黄铜琥珀为主，天蓝为次 */
+    --accent: #e8a33d;
+    --accent-soft: rgba(232, 163, 61, 0.16);
+    --sky: #7dd3fc;
+    --sky-soft: rgba(125, 211, 252, 0.16);
+    --success: #3fcb6e;
+    --danger: #f87171;
+
+    /* 文字 */
+    --text: #f2f6f8;
+    --text-muted: #9fb3bc;
+    --text-dim: #6b8189;
+
+    /* 大厅 3D 天空（暮色） */
+    --dusk: #39495f;
+
+    /* 字体族 */
+    --font-display: 'Oswald', 'ZCOOL QingKe HuangYou', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-title: 'Oswald', 'ZCOOL QingKe HuangYou', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-body: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    --font-label: 'Oswald', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
   }
 
   html,
@@ -17,8 +113,9 @@
 
   body {
     margin: 0;
-    background: #0b1220;
-    color: #f8fafc;
+    background: var(--shell-ink);
+    color: var(--text);
+    font-family: var(--font-body);
     overflow: hidden;
   }
 
@@ -28,39 +125,145 @@
   }
 
   ::selection {
-    background: rgba(34, 211, 238, 0.3);
-    color: #ffffff;
+    background: var(--accent-soft);
+    color: var(--text);
   }
 }
 
 @layer components {
+  /* 大厅遮罩：暗角 + 上下渐变，保证 3D 背景上的文字对比度 */
+  .lobby-scrim {
+    background:
+      radial-gradient(120% 90% at 50% 40%, transparent 0%, rgba(12, 20, 24, 0.35) 55%, rgba(12, 20, 24, 0.85) 100%),
+      linear-gradient(
+        to bottom,
+        rgba(12, 20, 24, 0.92) 0%,
+        rgba(12, 20, 24, 0.22) 22%,
+        rgba(12, 20, 24, 0.22) 70%,
+        rgba(12, 20, 24, 0.92) 100%
+      );
+  }
+
+  /* 仪表网格：只用于内凹读数区内部 */
+  .instrument-grid {
+    background-image:
+      linear-gradient(rgba(125, 211, 252, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(125, 211, 252, 0.07) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* 仪表式面板外壳 */
+  .panel-shell {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
+  }
+
+  .panel-shell--inset {
+    background: var(--surface-inset);
+    border-radius: 12px;
+  }
+
+  .panel-shell--raised {
+    background: var(--surface-raised);
+  }
+
+  /* 四角角标 */
+  .panel-tick {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: var(--border-strong);
+    border-style: solid;
+    border-width: 0;
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  .panel-tick--tl {
+    top: 6px;
+    left: 6px;
+    border-top-width: 1px;
+    border-left-width: 1px;
+  }
+
+  .panel-tick--tr {
+    top: 6px;
+    right: 6px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+  }
+
+  .panel-tick--bl {
+    bottom: 6px;
+    left: 6px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+  }
+
+  .panel-tick--br {
+    bottom: 6px;
+    right: 6px;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
+  }
+
+  /* 等宽索引铭牌 */
+  .panel-index {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+
   .glass-panel {
-    @apply border border-white/10 bg-[#111C2E]/80 shadow-2xl shadow-black/40 backdrop-blur-xl;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
   }
 
   .glass-card {
-    @apply border border-white/10 bg-white/[0.045] backdrop-blur-md;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
   }
 
   .hud-panel {
-    @apply border border-cyan-300/20 bg-[#0B1220]/70 backdrop-blur-lg;
+    border: 1px solid var(--sky-soft);
+    background: rgba(12, 20, 24, 0.72);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
   }
 
   .label-caps {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400;
+    font-family: var(--font-label);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-muted);
   }
 
-  .arena-grid {
-    background-image:
-      linear-gradient(rgba(34, 211, 238, 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(34, 211, 238, 0.06) 1px, transparent 1px);
-    background-size: 48px 48px;
+  .code-chip {
+    font-family: var(--font-mono);
+    border: 1px solid var(--border);
+    background: var(--surface-inset);
+    color: var(--text);
+    border-radius: 8px;
   }
 }
 
 @layer utilities {
   .text-shadow-glow {
-    text-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
+    text-shadow: 0 0 22px rgba(232, 163, 61, 0.4);
   }
 }
 

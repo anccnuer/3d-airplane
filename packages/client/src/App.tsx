@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PLANES, type RoomInfo, type RoomSummary, type Standing } from '@classroom-arena/shared';
 import { GameApp } from './game/GameApp';
 import { NetClient, type ConnectionStatus } from './game/systems/netClient';
+import { LobbyScene } from './components/LobbyScene';
 import { Hangar } from './ui/Hangar';
 import { MainMenu, type CreateRoomPayload, type JoinRoomPayload } from './ui/MainMenu';
 import { ResultPanel } from './ui/ResultPanel';
@@ -121,40 +122,39 @@ export function App() {
     return <GameApp net={net} room={room} onFinish={handleFinish} />;
   }
 
-  if (screen === 'hangar') {
-    return (
-      <Hangar
-        room={room}
-        playerId={net.playerId}
-        selectedPlaneId={selectedPlaneId}
-        error={error}
-        onSelectPlane={handleSelectPlane}
-        onReady={(ready) => net.setReady(ready)}
-        onLeave={handleLeave}
-      />
-    );
-  }
-
-  if (screen === 'result' && result) {
-    return (
-      <ResultPanel
-        standings={result.standings}
-        durationSeconds={result.durationSeconds}
-        playerId={net.playerId}
-        onRematch={handleRematch}
-        onLeave={handleLeave}
-      />
-    );
-  }
-
   return (
-    <MainMenu
-      status={status}
-      error={error}
-      rooms={rooms}
-      onConnect={handleConnect}
-      onCreate={handleCreate}
-      onJoin={handleJoin}
-    />
+    <>
+      <LobbyScene />
+      <div className="relative z-10 min-h-screen">
+        {screen === 'hangar' ? (
+          <Hangar
+            room={room}
+            playerId={net.playerId}
+            selectedPlaneId={selectedPlaneId}
+            error={error}
+            onSelectPlane={handleSelectPlane}
+            onReady={(ready) => net.setReady(ready)}
+            onLeave={handleLeave}
+          />
+        ) : screen === 'result' && result ? (
+          <ResultPanel
+            standings={result.standings}
+            durationSeconds={result.durationSeconds}
+            playerId={net.playerId}
+            onRematch={handleRematch}
+            onLeave={handleLeave}
+          />
+        ) : (
+          <MainMenu
+            status={status}
+            error={error}
+            rooms={rooms}
+            onConnect={handleConnect}
+            onCreate={handleCreate}
+            onJoin={handleJoin}
+          />
+        )}
+      </div>
+    </>
   );
 }

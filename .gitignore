@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.playwright-cli/
+.codebuddy/
+packages/server/
+
+*.log
+.tmp-*
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+server/server
+server/server.exe
+*.exe

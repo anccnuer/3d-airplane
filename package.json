@@ -1,0 +1,46 @@
+{
+  "name": "classroom-sky-arena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/client"
+  ],
+  "scripts": {
+    "dev": "npm run dev:client",
+    "dev:client": "npm run dev -w @classroom-arena/client",
+    "build": "npm run build -w @classroom-arena/client",
+    "typecheck": "npm run typecheck -w @classroom-arena/shared && npm run typecheck -w @classroom-arena/client",
+    "export:game-data": "tsx scripts/export-game-data.ts",
+    "export:golden": "tsx scripts/export-golden-vectors.ts",
+    "server:build": "cd server && go build ./...",
+    "server:vet": "cd server && go vet ./...",
+    "server:test": "cd server && go test ./...",
+    "server:run": "cd server && go run ./cmd/server",
+    "server:smoke": "cd server && go run ./cmd/smoke",
+    "check": "npm run typecheck && npm run build && npm run server:vet && npm run server:test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.185.0",
+    "autoprefixer": "10.4.20",
+    "lucide-react": "^0.468.0",
+    "postcss": "8.5.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-icons": "^5.4.0",
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^2.5.5",
+    "tailwindcss": "3.4.17",
+    "tailwindcss-animate": "1.0.7",
+    "tsx": "^4.19.2",
+    "typescript": "5.6.3",
+    "vite": "5.4.11"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

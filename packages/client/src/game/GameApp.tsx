@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PLAYER_COLORS, type Snapshot, type RoomInfo } from '@classroom-arena/shared';
+import { PLAYER_COLORS, PLANES, type Snapshot, type RoomInfo } from '@classroom-arena/shared';
 import { ThreeGame, type HudState } from './ThreeGame';
 import type { NetClient } from './systems/netClient';
 import { applySnapshotDelta, toBaseline, type DeltaBaseline } from './systems/snapshotDelta';
@@ -12,8 +12,8 @@ interface GameAppProps {
 }
 
 const EMPTY_HUD: HudState = {
-  hp: 100,
-  maxHp: 100,
+  hp: PLANES[0].hp,
+  maxHp: PLANES[0].hp,
   speed: 0,
   altitude: 0,
   score: 0,

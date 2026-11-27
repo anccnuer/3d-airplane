@@ -19,7 +19,7 @@ export function PlanePreview({ planeId, color }: PlanePreviewProps) {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
-    camera.position.set(5.8, 3.2, 7.4);
+    camera.position.set(4.8, 2.4, 6.2);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -32,6 +32,9 @@ export function PlanePreview({ planeId, color }: PlanePreviewProps) {
     const keyLight = new THREE.DirectionalLight('#f8fafc', 2.4);
     keyLight.position.set(4, 6, 6);
     scene.add(keyLight);
+    const fillLight = new THREE.DirectionalLight('#94a3b8', 0.6);
+    fillLight.position.set(-4, 1, -3);
+    scene.add(fillLight);
 
     const plane = createPlaneMesh(planeId, color);
     plane.scale.setScalar(1 / PLANE_SCALE);

@@ -19,96 +19,72 @@ export interface PlaneConfig {
   wingspan: number;
 }
 
+/**
+ * 所有机型共用同一套飞行与战斗数值；机型只影响外形、配色和翼展。
+ * 修改这些数值后需要运行 `npm run export:game-data` 和 `npm run export:golden`。
+ */
+const UNIFIED_STATS = {
+  minSpeed: 5,
+  maxSpeed: 17,
+  acceleration: 11,
+  turnRate: 2.5,
+  pitchRate: 2.0,
+  hp: 80,
+  damage: 9,
+  fireRate: 7,
+  bulletSpeed: 38
+} satisfies Omit<PlaneConfig, 'id' | 'name' | 'role' | 'description' | 'color' | 'model' | 'wingspan'>;
+
 export const PLANES: PlaneConfig[] = [
   {
     id: 'sparrow',
     name: '纸翼燕',
     role: '双翼侦察机',
-    description: '双翼结构带来极强低速机动，适合在课桌间穿梭缠斗。',
+    description: '双翼层叠的折纸轮廓，适合喜欢近距离缠斗视角的飞行员。',
     color: '#22D3EE',
     model: 'biplane',
-    minSpeed: 5,
-    maxSpeed: 17,
-    acceleration: 11,
-    turnRate: 2.5,
-    pitchRate: 2.0,
-    hp: 80,
-    damage: 9,
-    fireRate: 7,
-    bulletSpeed: 38,
-    wingspan: 2.5
+    wingspan: 2.5,
+    ...UNIFIED_STATS
   },
   {
     id: 'falcon',
     name: '赤隼',
     role: '后掠翼战斗机',
-    description: '后掠翼兼顾速度与火力，适合大多数交战距离。',
+    description: '赤色涂装与后掠翼构成利落的经典战机剪影。',
     color: '#F59E0B',
     model: 'swept',
-    minSpeed: 6,
-    maxSpeed: 21,
-    acceleration: 13,
-    turnRate: 2.0,
-    pitchRate: 1.7,
-    hp: 100,
-    damage: 12,
-    fireRate: 5.5,
-    bulletSpeed: 42,
-    wingspan: 2.9
+    wingspan: 2.9,
+    ...UNIFIED_STATS
   },
   {
     id: 'anvil',
     name: '铁砧',
     role: '双发重型攻击机',
-    description: '双发重型机体，装甲厚、单发伤害高，但转向迟缓。',
+    description: '双发动机、宽大机翼与双垂尾，外形厚实稳重。',
     color: '#A78BFA',
     model: 'heavy',
-    minSpeed: 7,
-    maxSpeed: 18,
-    acceleration: 10,
-    turnRate: 1.5,
-    pitchRate: 1.3,
-    hp: 140,
-    damage: 19,
-    fireRate: 3.2,
-    bulletSpeed: 36,
-    wingspan: 3.4
+    wingspan: 3.4,
+    ...UNIFIED_STATS
   },
   {
     id: 'dragonfly',
     name: '蜻蜓',
     role: '双尾撑侦察机',
-    description: '双尾撑布局视野开阔，转向灵敏但装甲薄弱。',
+    description: '细长机身与双尾撑勾勒出轻盈又独特的轮廓。',
     color: '#34D399',
     model: 'twinboom',
-    minSpeed: 4.5,
-    maxSpeed: 16,
-    acceleration: 10,
-    turnRate: 2.3,
-    pitchRate: 1.9,
-    hp: 70,
-    damage: 8,
-    fireRate: 8,
-    bulletSpeed: 36,
-    wingspan: 2.6
+    wingspan: 2.6,
+    ...UNIFIED_STATS
   },
   {
     id: 'comet',
     name: '流星',
     role: '三角翼截击机',
-    description: '三角翼高速截击机，极速突出，适合一击脱离。',
+    description: '低矮三角翼与尖削机头，呈现简洁的纸飞机造型。',
     color: '#FB7185',
     model: 'delta',
-    minSpeed: 8,
-    maxSpeed: 22,
-    acceleration: 15,
-    turnRate: 1.7,
-    pitchRate: 1.5,
-    hp: 90,
-    damage: 14,
-    fireRate: 4.5,
-    bulletSpeed: 48,
-    wingspan: 2.7
+    wingspan: 2.7,
+    ...UNIFIED_STATS
   }
 ];
 

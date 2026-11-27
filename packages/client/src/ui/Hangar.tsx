@@ -6,7 +6,6 @@ import { CodeChip } from '../components/ui/codeChip';
 import { Panel } from '../components/ui/panel';
 import { PlaneCard } from '../components/ui/planeCard';
 import { SectionHeader } from '../components/ui/sectionHeader';
-import { StatBar } from '../components/ui/statBar';
 import { cn } from '../lib/utils';
 
 interface HangarProps {
@@ -80,16 +79,19 @@ export function Hangar({
             </div>
 
             <div className="instrument-grid mt-4 rounded-xl border border-line bg-surface-inset/60 p-4">
-              <div className="flex flex-col gap-3">
-                <StatBar label="速度" value={plane.maxSpeed / 22} tone="sky" display={`${plane.maxSpeed}`} />
-                <StatBar label="转向" value={Math.min(1, plane.turnRate / 2.5)} tone="violet" />
-                <StatBar label="生命" value={plane.hp / 140} tone="success" display={`${plane.hp}`} />
-                <StatBar
-                  label="火力"
-                  value={(plane.damage * plane.fireRate) / 110}
-                  tone="accent"
-                  display={String(Math.round(plane.damage * plane.fireRate))}
-                />
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-title text-sm font-semibold tracking-wide text-ink">统一性能标定</span>
+                <span className="font-mono text-xs text-ink-dim">ALL MODELS</span>
+              </div>
+              <p className="mt-2 text-xs text-ink-muted">
+                五种机型仅外形与配色不同，飞行、生命与火力完全一致。
+              </p>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-mono text-xs text-ink">
+                <span>极速 {plane.maxSpeed}</span>
+                <span>加速 {plane.acceleration}</span>
+                <span>转向 {plane.turnRate}</span>
+                <span>生命 {plane.hp}</span>
+                <span>火力 {plane.damage}×{plane.fireRate}/s</span>
               </div>
             </div>
 

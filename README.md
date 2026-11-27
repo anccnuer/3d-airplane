@@ -17,7 +17,7 @@
 - Node.js 20 或更高版本（仅用于客户端构建与开发）。
 - Go 1.22 或更高版本。
 - 桌面 Chrome / Edge 浏览器。
-- 局域网服务器与玩家电脑处于同一网络，防火墙允许 TCP 8080 端口。
+- 局域网服务器与玩家电脑处于同一网络，防火墙允许 TCP 60000 端口。
 - 静态页面由外部 Web 服务器托管（Nginx、Caddy、IIS 或任意静态文件服务器）。
 
 ## 安装
@@ -32,7 +32,7 @@ npm run export:game-data
 
 ## 本地开发
 
-开发模式下，Vite 在 `5173` 端口提供页面，Go WebSocket 服务在 `8080` 端口运行：
+开发模式下，Vite 在 `5173` 端口提供页面，Go WebSocket 服务在 `60000` 端口运行：
 
 ```powershell
 # 终端 1
@@ -42,7 +42,7 @@ npm run dev
 npm run server:run
 ```
 
-浏览器访问 `http://localhost:5173`。其他局域网玩家可访问 `http://你的开发机IP:5173`，并在页面服务器地址栏填写 `ws://你的开发机IP:8080`。
+浏览器访问 `http://localhost:5173`。其他局域网玩家可访问 `http://你的开发机IP:5173`，并在页面服务器地址栏填写 `ws://你的开发机IP:60000`。
 
 也可以使用 PowerShell 脚本：
 
@@ -62,6 +62,15 @@ npm run build
 npm run server:build
 ```
 
+交叉编译 Linux amd64 服务端：
+
+```powershell
+cd server
+$env:GOOS='linux'; $env:GOARCH='amd64'; go build -o bin/3d-airplane-server-linux-amd64 ./cmd/server
+```
+
+产物位于 `server/bin/3d-airplane-server-linux-amd64`，已加入 `.gitignore`。
+
 2. 用任意静态 Web 服务器托管 `dist/` 目录。
 
 3. 在服务器上启动 Go WebSocket 服务：
@@ -77,13 +86,13 @@ cd server
 npm run server:run
 ```
 
-服务默认监听 `:8080`，可用环境变量覆盖：
+服务默认监听 `:60000`，可用环境变量覆盖：
 
-- `PORT`：WebSocket 端口，默认 `8080`。
+- `PORT`：WebSocket 端口，默认 `60000`。
 - `TICK_RATE`：模拟频率，默认取共享配置中的 `60`。
 - `LOG_LEVEL`：`debug` / `info` / `warn` / `error`，默认 `info`。
 
-玩家浏览器访问静态站点后，在服务器地址栏填写 `ws://服务器局域网IP:8080`。如果无法连接，请检查防火墙是否放行 TCP 8080 入站规则，并确认填写的是 WebSocket 地址而不是静态站点地址。
+玩家浏览器访问静态站点后，在服务器地址栏填写 `ws://服务器局域网IP:60000`。如果无法连接，请检查防火墙是否放行 TCP 60000 入站规则，并确认填写的是 WebSocket 地址而不是静态站点地址。
 
 ## 操作
 
@@ -112,12 +121,12 @@ npm run check
 npm run server:smoke
 ```
 
-`npm run check` 包含 TypeScript 类型检查、客户端构建、Go `vet` 和 Go 单元测试。Go 测试与冒烟测试会断言：玩家停放且无输入时保持 `alive=true`、`hp>0`、`respawnAt=0`，不会产生死亡/复活事件；正常撞击死亡后会出现未来 `respawnAt`，复活后恢复满血、停放且 `respawnAt=0`。冒烟测试默认连接 `ws://127.0.0.1:8080`，可用 `GAME_WS` 覆盖地址。
+`npm run check` 包含 TypeScript 类型检查、客户端构建、Go `vet` 和 Go 单元测试。Go 测试与冒烟测试会断言：玩家停放且无输入时保持 `alive=true`、`hp>0`、`respawnAt=0`，不会产生死亡/复活事件；正常撞击死亡后会出现未来 `respawnAt`，复活后恢复满血、停放且 `respawnAt=0`。冒烟测试默认连接 `ws://127.0.0.1:60000`，可用 `GAME_WS` 覆盖地址。
 
 服务端健康检查：
 
 ```text
-http://服务器局域网IP:8080/healthz
+http://服务器局域网IP:60000/healthz
 ```
 
 多人验证建议在两台浏览器窗口中分别加入同一房间，确认双方都能看到位置同步、子弹、命中和计分变化。

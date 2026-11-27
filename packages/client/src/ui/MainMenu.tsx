@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ArrowRight, AlertTriangle, Plane } from 'lucide-react';
 import { PLANES, type RoomSummary } from '@classroom-arena/shared';
 import { Button } from '../components/ui/button';
@@ -33,10 +33,7 @@ interface MainMenuProps {
 const ROOM_SLOT_COLORS = ['#22D3EE', '#F59E0B', '#A78BFA', '#34D399'];
 
 export function MainMenu({ status, error, rooms, onConnect, onCreate, onJoin }: MainMenuProps) {
-  const defaultUrl = useMemo(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.hostname || 'localhost'}:8080`;
-  }, []);
+  const defaultUrl = 'ws://192.167.2.201:60000';
 
   const [serverUrl, setServerUrl] = useState(defaultUrl);
   const [name, setName] = useState('飞行学员');
@@ -79,7 +76,7 @@ export function MainMenu({ status, error, rooms, onConnect, onCreate, onJoin }: 
                 label="服务器地址"
                 value={serverUrl}
                 onChange={(event) => setServerUrl(event.target.value)}
-                placeholder="ws://192.168.1.10:8080"
+                placeholder="ws://192.168.1.10:60000"
               />
               <Input
                 label="飞行员昵称"

@@ -148,7 +148,7 @@ func hasLifecycleEvent(client *smokeClient, eventType, playerID string) bool {
 func main() {
 	url := os.Getenv("GAME_WS")
 	if url == "" {
-		url = "ws://127.0.0.1:8080"
+		url = "ws://127.0.0.1:60000"
 	}
 
 	first, err := connect("player-1", url)

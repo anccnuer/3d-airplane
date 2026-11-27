@@ -15,7 +15,7 @@ type Config struct {
 
 func Load(data *GameData) Config {
 	return Config{
-		Port:     envString("PORT", "8080"),
+		Port:     envString("PORT", "60000"),
 		TickRate: envInt("TICK_RATE", data.TickRate),
 		LogLevel: parseLevel(envString("LOG_LEVEL", "info")),
 		Data:     data,

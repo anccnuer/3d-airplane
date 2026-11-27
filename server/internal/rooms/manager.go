@@ -1,11 +1,13 @@
 package rooms
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
 
 	"classroom-arena/server/internal/config"
+	"classroom-arena/server/internal/observability"
 	"classroom-arena/server/internal/protocol"
 	"classroom-arena/server/internal/transport"
 )
@@ -22,16 +24,27 @@ type Manager struct {
 	tokens        map[string]string
 	clientPlayers map[*transport.Client]string
 	data          *config.GameData
+	tickRate      int
 	tickCount     int64
+	bulletPool    *BulletPool
 }
 
 func NewManager(data *config.GameData) *Manager {
+	return NewManagerWithTickRate(data, data.TickRate)
+}
+
+func NewManagerWithTickRate(data *config.GameData, tickRate int) *Manager {
+	if tickRate <= 0 {
+		tickRate = data.TickRate
+	}
 	return &Manager{
 		Rooms:         make(map[string]*Room),
 		memberships:   make(map[string]string),
 		tokens:        make(map[string]string),
 		clientPlayers: make(map[*transport.Client]string),
 		data:          data,
+		tickRate:      tickRate,
+		bulletPool:    NewBulletPool(),
 	}
 }
 
@@ -40,16 +53,20 @@ func (m *Manager) CreateRoom(client *transport.Client, name, roomName, planeID s
 	defer m.mu.Unlock()
 
 	m.detachClientLocked(client)
+	prng, seed := newRoomPRNG()
 	room := &Room{
 		Code:        generateRoomCode(m.Rooms),
 		Name:        roomName,
 		State:       "lobby",
 		NextEventID: 1,
+		prng:        prng,
+		seed:        seed,
 	}
 	player := newPlayer(client, strings.TrimSpace(name), planeID, 0, m.data)
 	room.Players = append(room.Players, player)
 	m.Rooms[room.Code] = room
 	m.registerLocked(player, room.Code)
+	m.startActorLocked(room)
 	return Result{Room: room, Player: player}
 }
 
@@ -248,6 +265,7 @@ func (m *Manager) leavePlayerLocked(playerID string) {
 		delete(m.clientPlayers, player.Client)
 	}
 	if len(room.Players) == 0 {
+		m.stopActorLocked(room)
 		delete(m.Rooms, room.Code)
 	}
 }
@@ -314,8 +332,28 @@ func (m *Manager) BroadcastEvents(room *Room, events []protocol.GameEvent) {
 	m.broadcast(room, protocol.GameEvents{Type: "game_events", Events: events})
 }
 
-func (m *Manager) BroadcastSnapshot(room *Room, snapshot protocol.Snapshot) {
-	m.broadcast(room, snapshot)
+func (m *Manager) BroadcastSnapshot(room *Room, snapshot protocol.Snapshot, delta protocol.SnapshotDelta) {
+	clients := m.roomClients(room)
+	if len(clients) == 0 {
+		return
+	}
+	fullPayload, err := json.Marshal(snapshot)
+	if err != nil {
+		return
+	}
+	deltaPayload, err := protocol.MarshalEnvelope(delta, uint32(delta.Tick), 0)
+	if err != nil {
+		return
+	}
+	for _, client := range clients {
+		if client.Version() >= 2 {
+			client.EnqueuePayload(deltaPayload, true)
+			observability.Default.Snapshot(len(deltaPayload))
+		} else {
+			client.EnqueuePayload(fullPayload, false)
+			observability.Default.Snapshot(len(fullPayload))
+		}
+	}
 }
 
 func (m *Manager) BroadcastResult(room *Room) {
@@ -333,16 +371,20 @@ func (m *Manager) SendMatchStart(room *Room, startsAt, endsAt int64) {
 	m.broadcast(room, protocol.MatchStart{Type: "match_start", StartsAt: startsAt, EndsAt: endsAt})
 }
 
-func (m *Manager) broadcast(room *Room, message any) {
+func (m *Manager) roomClients(room *Room) []*transport.Client {
 	m.mu.Lock()
+	defer m.mu.Unlock()
 	clients := make([]*transport.Client, 0, len(room.Players))
 	for _, player := range room.Players {
 		if player.Connected && player.Client != nil {
 			clients = append(clients, player.Client)
 		}
 	}
-	m.mu.Unlock()
-	for _, client := range clients {
+	return clients
+}
+
+func (m *Manager) broadcast(room *Room, message any) {
+	for _, client := range m.roomClients(room) {
 		client.Enqueue(message)
 	}
 }

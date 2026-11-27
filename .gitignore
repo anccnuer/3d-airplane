@@ -2,7 +2,6 @@ node_modules/
 dist/
 .playwright-cli/
 .codebuddy/
-packages/server/
 
 *.log
 .tmp-*

@@ -14,12 +14,15 @@
     "typecheck": "npm run typecheck -w @classroom-arena/shared && npm run typecheck -w @classroom-arena/client",
     "export:game-data": "tsx scripts/export-game-data.ts",
     "export:golden": "tsx scripts/export-golden-vectors.ts",
+    "proto:gen": "tsx scripts/generate-protocol.ts",
+    "check:drift": "tsx scripts/export-game-data.ts --check && tsx scripts/check-config-drift.ts",
+    "test:client": "tsx --test packages/client/src/game/systems/*.test.ts",
     "server:build": "cd server && go build ./...",
     "server:vet": "cd server && go vet ./...",
     "server:test": "cd server && go test ./...",
     "server:run": "cd server && go run ./cmd/server",
     "server:smoke": "cd server && go run ./cmd/smoke",
-    "check": "npm run typecheck && npm run build && npm run server:vet && npm run server:test"
+    "check": "npm run proto:gen && npm run check:drift && npm run typecheck && npm run test:client && npm run build && npm run server:vet && npm run server:test"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -31,7 +34,6 @@
     "postcss": "8.5.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-icons": "^5.4.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss": "3.4.17",
     "tailwindcss-animate": "1.0.7",

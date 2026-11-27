@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   PLAYER_COLORS,
+  TICK_RATE,
   WORLD,
   clamp,
   forwardFromRotation,
@@ -12,11 +13,14 @@ import {
   type Snapshot,
   type Vec3
 } from '@classroom-arena/shared';
+import { sharedRenderer } from './render/Renderer';
 import { createClassroom } from './scene/classroom';
 import { disposeObject3D } from './scene/disposal';
 import { Effects } from './scene/effects';
 import { createPlaneMesh, type PlaneMesh } from './scene/planeFactory';
 import { InputSystem } from './systems/input';
+import { JitterBuffer } from './systems/jitterBuffer';
+import { PredictionSystem } from './systems/prediction';
 import { RenderStateSystem } from './systems/renderState';
 
 export interface HudState {
@@ -36,6 +40,8 @@ export interface HudState {
 export interface ThreeGameCallbacks {
   sendInput: (input: ReturnType<InputSystem['sample']>) => void;
   onHud: (hud: HudState) => void;
+  getClockOffsetMs?: () => number;
+  hasClock?: () => boolean;
 }
 
 interface PlayerMeta {
@@ -63,6 +69,8 @@ export class ThreeGame {
   private readonly effects = new Effects();
   private readonly input: InputSystem;
   private readonly renderState = new RenderStateSystem();
+  private readonly jitter = new JitterBuffer<Snapshot>(100);
+  private readonly prediction = new PredictionSystem();
   private readonly planes = new Map<string, PlaneView>();
   private readonly metadata = new Map<string, PlayerMeta>();
 
@@ -72,6 +80,7 @@ export class ThreeGame {
   private frameId = 0;
   private hudAccumulator = 0;
   private inputSendAccumulator = 0;
+  private inputTick = 0;
   private lastLocalState: PlayerState | null = null;
   private serverClockOffsetMs = 0;
   private hasServerClock = false;
@@ -81,11 +90,8 @@ export class ThreeGame {
     private readonly container: HTMLElement,
     private readonly callbacks: ThreeGameCallbacks
   ) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    container.appendChild(this.renderer.domElement);
+    this.renderer = sharedRenderer.acquire();
+    sharedRenderer.attach(container);
 
     this.camera = new THREE.PerspectiveCamera(
       68,
@@ -116,14 +122,17 @@ export class ThreeGame {
     const height = Math.max(this.container.clientHeight, 1);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    sharedRenderer.resize(width, height);
   };
 
   setLocalPlayer(playerId: string, planeId: string): void {
     if (this.localId && this.localId === playerId) return;
     this.localId = playerId;
+    this.prediction.configurePlane(planeId);
+    this.prediction.reset();
     this.renderState.configureLocal(playerId);
     this.renderState.reset();
+    this.jitter.reset();
     this.input.resetMotion();
     this.lastLocalState = null;
   }
@@ -140,10 +149,14 @@ export class ThreeGame {
   }
 
   private serverNow(): number {
+    if (this.callbacks.hasClock?.()) {
+      return Date.now() + (this.callbacks.getClockOffsetMs?.() ?? 0);
+    }
     return Date.now() + this.serverClockOffsetMs;
   }
 
   private trackServerClock(serverTime: number): void {
+    if (this.callbacks.hasClock?.()) return;
     const observed = serverTime - Date.now();
     if (!this.hasServerClock) {
       this.serverClockOffsetMs = observed;
@@ -159,17 +172,20 @@ export class ThreeGame {
 
   applySnapshot(snapshot: Snapshot): void {
     this.trackServerClock(snapshot.serverTime);
+    this.jitter.push(snapshot);
+  }
 
+  private consumeSnapshot(snapshot: Snapshot): void {
     const previous = this.renderState.getLocalState();
     const wasParked = previous?.parked ?? false;
-
     this.renderState.applySnapshot(snapshot);
-
     const local = this.renderState.getLocalState();
     if (local?.parked && !wasParked) {
       this.input.resetMotion();
     }
-
+    if (local && this.localId) {
+      this.prediction.rebase(local, snapshot.tick);
+    }
     this.effects.syncBullets(snapshot.bullets);
   }
 
@@ -196,17 +212,38 @@ export class ThreeGame {
     const frameTime = performance.now();
     const dt = Math.min((frameTime - this.lastFrameTime) / 1000, 0.05);
     this.lastFrameTime = frameTime;
-    const input = this.input.sample(Date.now(), dt);
+    const input = this.input.sample(this.inputTick, dt);
 
     this.inputSendAccumulator += dt;
-    if (this.inputSendAccumulator >= 1 / 60) {
-      this.inputSendAccumulator = 0;
-      this.callbacks.sendInput(input);
+    const inputInterval = 1 / TICK_RATE;
+    while (this.inputSendAccumulator >= inputInterval) {
+      this.inputSendAccumulator -= inputInterval;
+      this.inputTick += 1;
+      const stamped = { ...input, tick: this.inputTick };
+      this.prediction.predict(stamped, stamped.tick);
+      this.callbacks.sendInput(stamped);
     }
 
+    const ready = this.jitter.take(this.serverNow());
+    if (ready) this.consumeSnapshot(ready);
     this.renderState.update(dt);
 
     const players = this.renderState.getPlayers();
+    const predicted = this.prediction.getState();
+    if (predicted && this.localId) {
+      const authoritative = this.renderState.getLocalState();
+      const index = players.findIndex((player) => player.id === this.localId);
+      const merged: PlayerState = {
+        ...predicted,
+        id: this.localId,
+        hp: authoritative?.hp ?? predicted.hp,
+        alive: authoritative?.alive ?? predicted.alive,
+        invulnerableUntil: authoritative?.invulnerableUntil ?? predicted.invulnerableUntil,
+        respawnAt: authoritative?.respawnAt ?? predicted.respawnAt
+      };
+      if (index >= 0) players[index] = merged;
+      else players.push(merged);
+    }
     this.syncPlaneMeshes(players, dt);
     this.effects.update(dt);
     this.updateCamera(dt);
@@ -334,7 +371,6 @@ export class ThreeGame {
     this.scene.remove(this.classroom.group, this.effects.group);
     this.classroom.dispose();
     this.effects.dispose();
-    this.renderer.dispose();
-    this.renderer.domElement.remove();
+    sharedRenderer.detach(this.container);
   }
 }

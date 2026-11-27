@@ -100,7 +100,8 @@ func ClampToWorld(position config.Vec3, data *config.GameData) CollisionResult {
 
 func ResolveDeskCollisions(body *FlightBody, data *config.GameData) bool {
 	collided := false
-	for _, desk := range data.DeskColliders {
+	index := GetDeskIndex(data)
+	for _, desk := range index.Query(body.Position, data.PlayerRadius) {
 		result := resolveSphereAabb(body.Position, data.PlayerRadius, desk)
 		if !result.Hit {
 			continue
@@ -122,7 +123,8 @@ func BulletHitsWorld(position config.Vec3, data *config.GameData) bool {
 
 func BulletHitsDesk(position config.Vec3, data *config.GameData) bool {
 	padding := data.BulletRadius
-	for _, desk := range data.DeskColliders {
+	index := GetDeskIndex(data)
+	for _, desk := range index.Query(position, padding) {
 		if position[0] >= desk.Min[0]-padding && position[0] <= desk.Max[0]+padding &&
 			position[1] >= desk.Min[1]-padding && position[1] <= desk.Max[1]+padding &&
 			position[2] >= desk.Min[2]-padding && position[2] <= desk.Max[2]+padding {

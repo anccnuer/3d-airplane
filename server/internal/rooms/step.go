@@ -3,7 +3,6 @@ package rooms
 import (
 	"log/slog"
 	"math"
-	"time"
 
 	"classroom-arena/server/internal/config"
 	"classroom-arena/server/internal/protocol"
@@ -16,6 +15,7 @@ type tickOutcome struct {
 	ended             bool
 	events            []protocol.GameEvent
 	snapshot          protocol.Snapshot
+	delta             protocol.SnapshotDelta
 	playing           bool
 	endsAt            int64
 	broadcast         bool
@@ -30,42 +30,53 @@ const (
 )
 
 func (m *Manager) Tick(now int64) {
-	dt := 1 / float64(m.data.TickRate)
-
+	dt := 1 / float64(m.tickRate)
 	m.mu.Lock()
-	m.tickCount++
-	pruned := m.pruneDisconnectedLocked(now)
 	rooms := make([]*Room, 0, len(m.Rooms))
 	for _, room := range m.Rooms {
 		rooms = append(rooms, room)
 	}
-	outcomes := make([]tickOutcome, 0, len(rooms))
+	m.mu.Unlock()
 	for _, room := range rooms {
-		outcomes = append(outcomes, m.stepRoomLocked(room, now, dt))
+		m.tickRoom(room, now, dt)
 	}
+}
+
+func (m *Manager) tickRoom(room *Room, now int64, dt ...float64) {
+	step := 1 / float64(m.tickRate)
+	if len(dt) > 0 {
+		step = dt[0]
+	}
+	m.mu.Lock()
+	m.tickCount++
+	tickCount := m.tickCount
+	outcome := m.stepRoomLocked(room, now, step)
 	m.mu.Unlock()
 
-	if pruned || m.tickCount%idleRoomStateTicks == 0 {
-		m.BroadcastRoomList()
+	if tickCount%outcome.roomStateInterval == 0 {
+		m.BroadcastRoomState(outcome.room)
 	}
-	for _, outcome := range outcomes {
-		if m.tickCount%outcome.roomStateInterval == 0 {
-			m.BroadcastRoomState(outcome.room)
-		}
-	}
+	m.broadcastOutcome(outcome, now)
+}
 
-	for _, outcome := range outcomes {
-		if outcome.started {
-			m.BroadcastRoomState(outcome.room)
-			m.SendMatchStart(outcome.room, now, outcome.endsAt)
-		}
-		m.BroadcastEvents(outcome.room, outcome.events)
-		if outcome.playing {
-			m.BroadcastSnapshot(outcome.room, outcome.snapshot)
-		}
-		if outcome.ended && outcome.broadcast {
-			m.BroadcastResult(outcome.room)
-		}
+func (m *Manager) Housekeeping(now int64) bool {
+	m.mu.Lock()
+	changed := m.pruneDisconnectedLocked(now)
+	m.mu.Unlock()
+	return changed
+}
+
+func (m *Manager) broadcastOutcome(outcome tickOutcome, now int64) {
+	if outcome.started {
+		m.BroadcastRoomState(outcome.room)
+		m.SendMatchStart(outcome.room, now, outcome.endsAt)
+	}
+	m.BroadcastEvents(outcome.room, outcome.events)
+	if outcome.playing {
+		m.BroadcastSnapshot(outcome.room, outcome.snapshot, outcome.delta)
+	}
+	if outcome.ended && outcome.broadcast {
+		m.BroadcastResult(outcome.room)
 	}
 }
 
@@ -181,6 +192,7 @@ func (m *Manager) stepRoomLocked(room *Room, now int64, dt float64) tickOutcome 
 		}
 
 		if remove {
+			m.bulletPool.Put(bullet)
 			room.Bullets = append(room.Bullets[:index], room.Bullets[index+1:]...)
 		}
 	}
@@ -196,8 +208,100 @@ func (m *Manager) stepRoomLocked(room *Room, now int64, dt float64) tickOutcome 
 	}
 
 	outcome.playing = true
-	outcome.snapshot = buildSnapshotLocked(room, now, m.tickCount)
+	full := buildSnapshotLocked(room, now, m.tickCount)
+	outcome.snapshot = full
+	const baselineInterval = int64(30)
+	if room.SnapshotBase == nil || m.tickCount%baselineInterval == 0 {
+		outcome.delta = protocol.SnapshotDelta{
+			Type:       "snapshot_delta",
+			BaseTick:   full.Tick,
+			Tick:       full.Tick,
+			ServerTime: full.ServerTime,
+			Players:    full.Players,
+			Bullets:    full.Bullets,
+		}
+		room.SnapshotBase = cloneSnapshot(full)
+	} else {
+		outcome.delta = buildSnapshotDeltaLocked(room.SnapshotBase, full)
+	}
 	return outcome
+}
+
+func cloneSnapshot(snapshot protocol.Snapshot) *protocol.Snapshot {
+	clone := snapshot
+	clone.Players = append([]protocol.PlayerState(nil), snapshot.Players...)
+	clone.Bullets = append([]protocol.BulletState(nil), snapshot.Bullets...)
+	for index := range clone.Players {
+		clone.Players[index].Position = cloneVec3(snapshot.Players[index].Position)
+		clone.Players[index].Rotation = cloneVec3(snapshot.Players[index].Rotation)
+		clone.Players[index].Velocity = cloneVec3(snapshot.Players[index].Velocity)
+	}
+	for index := range clone.Bullets {
+		clone.Bullets[index].Position = cloneVec3(snapshot.Bullets[index].Position)
+		clone.Bullets[index].Direction = cloneVec3(snapshot.Bullets[index].Direction)
+	}
+	return &clone
+}
+
+func cloneVec3(value config.Vec3) config.Vec3 {
+	return value
+}
+
+func buildSnapshotDeltaLocked(base *protocol.Snapshot, current protocol.Snapshot) protocol.SnapshotDelta {
+	delta := protocol.SnapshotDelta{
+		Type:       "snapshot_delta",
+		BaseTick:   base.Tick,
+		Tick:       current.Tick,
+		ServerTime: current.ServerTime,
+	}
+	basePlayers := make(map[string]protocol.PlayerState, len(base.Players))
+	for _, player := range base.Players {
+		basePlayers[player.ID] = player
+	}
+	currentPlayers := make(map[string]bool, len(current.Players))
+	for _, player := range current.Players {
+		currentPlayers[player.ID] = true
+		if previous, ok := basePlayers[player.ID]; !ok || !playerStateEqual(previous, player) {
+			delta.Players = append(delta.Players, player)
+		}
+	}
+	for id := range basePlayers {
+		if !currentPlayers[id] {
+			delta.RemovedPlayers = append(delta.RemovedPlayers, id)
+		}
+	}
+
+	baseBullets := make(map[int64]protocol.BulletState, len(base.Bullets))
+	for _, bullet := range base.Bullets {
+		baseBullets[bullet.ID] = bullet
+	}
+	currentBullets := make(map[int64]bool, len(current.Bullets))
+	for _, bullet := range current.Bullets {
+		currentBullets[bullet.ID] = true
+		if previous, ok := baseBullets[bullet.ID]; !ok || !bulletStateEqual(previous, bullet) {
+			delta.Bullets = append(delta.Bullets, bullet)
+		}
+	}
+	for id := range baseBullets {
+		if !currentBullets[id] {
+			delta.RemovedBullets = append(delta.RemovedBullets, id)
+		}
+	}
+	return delta
+}
+
+func playerStateEqual(a, b protocol.PlayerState) bool {
+	return a.ID == b.ID && vec3Equal(a.Position, b.Position) && vec3Equal(a.Rotation, b.Rotation) &&
+		vec3Equal(a.Velocity, b.Velocity) && a.Speed == b.Speed && a.HP == b.HP && a.Alive == b.Alive &&
+		a.InvulnerableUntil == b.InvulnerableUntil && a.RespawnAt == b.RespawnAt && a.Parked == b.Parked
+}
+
+func bulletStateEqual(a, b protocol.BulletState) bool {
+	return a.ID == b.ID && a.OwnerID == b.OwnerID && vec3Equal(a.Position, b.Position) && vec3Equal(a.Direction, b.Direction)
+}
+
+func vec3Equal(a, b config.Vec3) bool {
+	return a[0] == b[0] && a[1] == b[1] && a[2] == b[2]
 }
 
 func (m *Manager) emitLocked(room *Room, events *[]protocol.GameEvent, eventType string, at int64, sourceID, targetID *string, position *config.Vec3, text *string) {
@@ -261,7 +365,10 @@ func (m *Manager) respawnPlayerLocked(room *Room, player *Player, now int64, eve
 
 func (m *Manager) spawnBulletLocked(room *Room, player *Player, now int64, plane *config.Plane, events *[]protocol.GameEvent) {
 	forward := simulation.ForwardFromRotation(player.Rotation)
-	spread := (float64(time.Now().UnixNano()%1000000)/1000000.0 - 0.5) * 0.022
+	if room.prng == nil {
+		room.prng, room.seed = newRoomPRNG()
+	}
+	spread := (room.prng.Float64() - 0.5) * 0.022
 	direction := config.Vec3{
 		forward[0] + spread,
 		forward[1] + spread*0.5,
@@ -271,15 +378,15 @@ func (m *Manager) spawnBulletLocked(room *Room, player *Player, now int64, plane
 	if length > 0 {
 		direction = direction.Scale(1 / length)
 	}
-	room.Bullets = append(room.Bullets, &Bullet{
-		ID:        room.NextEventID,
-		OwnerID:   player.ID,
-		Position:  player.Position.Add(direction.Scale(1.6)),
-		Direction: direction,
-		Speed:     plane.BulletSpeed,
-		Damage:    plane.Damage,
-		TTL:       2.2,
-	})
+	bullet := m.bulletPool.Get()
+	bullet.ID = room.NextEventID
+	bullet.OwnerID = player.ID
+	bullet.Position = player.Position.Add(direction.Scale(1.6))
+	bullet.Direction = direction
+	bullet.Speed = plane.BulletSpeed
+	bullet.Damage = plane.Damage
+	bullet.TTL = 2.2
+	room.Bullets = append(room.Bullets, bullet)
 	room.NextEventID++
 	m.emitLocked(room, events, "fire", now, &player.ID, nil, vec3Ptr(player.Position), nil)
 }

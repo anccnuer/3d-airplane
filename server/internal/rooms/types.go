@@ -5,7 +5,9 @@ import (
 	"classroom-arena/server/internal/protocol"
 	"classroom-arena/server/internal/simulation"
 	"classroom-arena/server/internal/transport"
-	"math/rand"
+	"crypto/rand"
+	"errors"
+	"math/big"
 	"sort"
 	"time"
 )
@@ -48,15 +50,31 @@ type Bullet struct {
 }
 
 type Room struct {
-	Code        string
-	Name        string
-	State       string
-	Players     []*Player
-	Bullets     []*Bullet
-	StartsAt    *int64
-	EndsAt      *int64
-	NextEventID int64
-	ResultSent  bool
+	Code         string
+	Name         string
+	State        string
+	Players      []*Player
+	Bullets      []*Bullet
+	StartsAt     *int64
+	EndsAt       *int64
+	NextEventID  int64
+	ResultSent   bool
+	SnapshotBase *protocol.Snapshot
+	actor        *RoomActor
+	prng         *simulation.RoomPRNG
+	seed         int64
+}
+
+func newRoomPRNG() (*simulation.RoomPRNG, int64) {
+	buf := make([]byte, 8)
+	if _, err := rand.Read(buf); err != nil {
+		panic(err)
+	}
+	var seed int64
+	for _, value := range buf {
+		seed = seed<<8 | int64(value)
+	}
+	return simulation.NewRoomPRNG(seed), seed
 }
 
 type Result struct {
@@ -68,16 +86,21 @@ type Result struct {
 func (r *Result) OK() bool { return r.Room != nil && r.Player != nil }
 
 func generateRoomCode(existing map[string]*Room) string {
-	for {
+	for attempt := 0; attempt < 64; attempt++ {
 		code := make([]byte, 5)
 		for i := range code {
-			code[i] = codeChars[rand.Intn(len(codeChars))]
+			index, err := rand.Int(rand.Reader, big.NewInt(int64(len(codeChars))))
+			if err != nil {
+				panic(err)
+			}
+			code[i] = codeChars[index.Int64()]
 		}
 		value := string(code)
 		if _, taken := existing[value]; !taken {
 			return value
 		}
 	}
+	panic(errors.New("failed to generate unique room code"))
 }
 
 func newPlayer(client *transport.Client, name, planeID string, index int, data *config.GameData) *Player {

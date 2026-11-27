@@ -4,22 +4,33 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
-	Port     string
-	TickRate int
-	LogLevel slog.Level
-	Data     *GameData
+	Port              string
+	TickRate          int
+	LogLevel          slog.Level
+	ProtocolV2Enabled bool
+	Data              *GameData
 }
 
 func Load(data *GameData) Config {
 	return Config{
-		Port:     envString("PORT", "60000"),
-		TickRate: envInt("TICK_RATE", data.TickRate),
-		LogLevel: parseLevel(envString("LOG_LEVEL", "info")),
-		Data:     data,
+		Port:              envString("PORT", "60000"),
+		TickRate:          envInt("TICK_RATE", data.TickRate),
+		LogLevel:          parseLevel(envString("LOG_LEVEL", "info")),
+		ProtocolV2Enabled: envBool("PROTOCOL_V2_ENABLED", true),
+		Data:              data,
 	}
+}
+
+func envBool(key string, fallback bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	return value == "1" || strings.EqualFold(value, "true")
 }
 
 func envString(key, fallback string) string {

@@ -4,6 +4,18 @@ import "classroom-arena/server/internal/config"
 
 type Vec3 = config.Vec3
 
+type Hello struct {
+	Type     string `json:"type"`
+	Versions []int  `json:"versions"`
+}
+
+type HelloAck struct {
+	Type       string `json:"type"`
+	Version    int    `json:"version"`
+	TickRate   int    `json:"tickRate"`
+	ServerTime int64  `json:"serverTime"`
+}
+
 type InputCommand struct {
 	Type     string  `json:"type"`
 	Seq      int64   `json:"seq"`
@@ -13,6 +25,17 @@ type InputCommand struct {
 	Yaw      float64 `json:"yaw"`
 	Roll     float64 `json:"roll"`
 	Fire     bool    `json:"fire"`
+}
+
+type SnapshotDelta struct {
+	Type           string        `json:"type"`
+	BaseTick       int64         `json:"baseTick"`
+	Tick           int64         `json:"tick"`
+	ServerTime     int64         `json:"serverTime"`
+	RemovedPlayers []string      `json:"removedPlayers,omitempty"`
+	RemovedBullets []int64       `json:"removedBullets,omitempty"`
+	Players        []PlayerState `json:"players,omitempty"`
+	Bullets        []BulletState `json:"bullets,omitempty"`
 }
 
 type CreateRoom struct {

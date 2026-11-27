@@ -89,10 +89,13 @@ npm run server:run
 服务默认监听 `:60000`，可用环境变量覆盖：
 
 - `PORT`：WebSocket 端口，默认 `60000`。
-- `TICK_RATE`：模拟频率，默认取共享配置中的 `60`。
+- `TICK_RATE`：模拟频率，默认取共享配置中的 `60`；步进频率与物理步长统一使用该值。
 - `LOG_LEVEL`：`debug` / `info` / `warn` / `error`，默认 `info`。
+- `PROTOCOL_V2_ENABLED`：是否启用 v2 二进制协议，默认 `true`；设为 `false` 可回退到 v1 JSON 广播。
 
 玩家浏览器访问静态站点后，在服务器地址栏填写 `ws://服务器局域网IP:60000`。如果无法连接，请检查防火墙是否放行 TCP 60000 入站规则，并确认填写的是 WebSocket 地址而不是静态站点地址。
+
+v2 协议默认通过版本握手启用；如需强制回退 v1，可在服务器设置 `PROTOCOL_V2_ENABLED=false`，或在客户端 WebSocket 地址后追加 `?protocol=1`（例如 `ws://192.168.1.10:60000?protocol=1`）。服务端 `/metrics` 提供 `slow_ticks`、`snapshot_sends`、`snapshot_bytes`、`dropped_snapshots` 与 `disconnects` 指标。
 
 ## 操作
 
@@ -121,7 +124,9 @@ npm run check
 npm run server:smoke
 ```
 
-`npm run check` 包含 TypeScript 类型检查、客户端构建、Go `vet` 和 Go 单元测试。Go 测试与冒烟测试会断言：玩家停放且无输入时保持 `alive=true`、`hp>0`、`respawnAt=0`，不会产生死亡/复活事件；正常撞击死亡后会出现未来 `respawnAt`，复活后恢复满血、停放且 `respawnAt=0`。冒烟测试默认连接 `ws://127.0.0.1:60000`，可用 `GAME_WS` 覆盖地址。
+`npm run check` 包含协议与配置生成漂移校验、TypeScript 类型检查、客户端单测、客户端构建、Go `vet` 和 Go 单元测试。Go 测试覆盖协议 envelope、空间索引碰撞、确定性回放、停放状态与快照一致性；冒烟测试会断言：玩家停放且无输入时保持 `alive=true`、`hp>0`、`respawnAt=0`，不会产生死亡/复活事件；正常撞击死亡后会出现未来 `respawnAt`，复活后恢复满血、停放且 `respawnAt=0`。冒烟测试默认连接 `ws://127.0.0.1:60000`，可用 `GAME_WS` 覆盖地址；设置 `SMOKE_PROTOCOL_V2=1` 可让第一个客户端执行 v2 握手并验证二进制增量快照路径。
+
+共享常量或协议 schema 变更后必须先执行 `npm run export:game-data` 与 `npm run proto:gen`，否则 `npm run check` 的漂移校验会失败。
 
 服务端健康检查：
 
@@ -133,8 +138,7 @@ http://服务器局域网IP:60000/healthz
 
 ## 项目结构
 
-- `server/`：Go WebSocket 权威服务端，包含 60Hz 房间模拟、碰撞、广播、配置 embed 与冒烟测试。
-- `packages/shared`：协议类型、TS 常量、机型数值与配置导出；旧飞行数学仅作为黄金向量参考，不再被客户端运行时使用。
-- `packages/client`：React 界面与 Three.js 渲染层，使用快照插值和本机视觉外推。
-- `scripts`：配置导出、黄金向量导出与 PowerShell 辅助脚本。
-- `packages/server`：已废弃的旧 Node 服务端目录，不再参与构建与运行。
+- `server/`：Go WebSocket 权威服务端，包含每房间 60Hz Actor、空间索引碰撞、确定性 PRNG、版本化二进制协议与观测指标。
+- `packages/shared`：协议类型与 schema、TS 常量、机型数值与配置导出；飞行数学用于黄金向量与本机预测。
+- `packages/client`：React 界面与 Three.js 渲染层，使用 v2 二进制协议、抖动缓冲、tick/ack/RTT 与本机预测回滚。
+- `scripts`：协议/配置生成、漂移校验、黄金向量导出与 PowerShell 辅助脚本。

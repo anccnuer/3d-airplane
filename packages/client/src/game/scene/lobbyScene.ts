@@ -4,6 +4,7 @@ import { createClassroom, type ClassroomScene } from './classroom';
 import { disposeObject3D } from './disposal';
 import { createPlaneMesh, type PlaneMesh } from './planeFactory';
 import { createAmbientLights } from './lighting';
+import { sharedRenderer } from '../render/Renderer';
 
 /** 大厅暮色天空：比对局内的白天更暗，让教室边缘没入夜色，同时保证文字对比度。 */
 const DUSK = '#39495f';
@@ -52,16 +53,11 @@ export class LobbyScene {
     }
   };
 
-  constructor(container: HTMLElement) {
+  constructor(private readonly container: HTMLElement) {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.domElement.style.position = 'absolute';
-    this.renderer.domElement.style.inset = '0';
-    container.appendChild(this.renderer.domElement);
+    this.renderer = sharedRenderer.acquire();
+    sharedRenderer.attach(container);
 
     this.scene.background = new THREE.Color(DUSK);
     this.scene.fog = new THREE.Fog(DUSK, 30, 75);
@@ -113,7 +109,7 @@ export class LobbyScene {
     if (this.disposed) return;
     const widthValue = Math.max(width, 1);
     const heightValue = Math.max(height, 1);
-    this.renderer.setSize(widthValue, heightValue);
+    sharedRenderer.resize(widthValue, heightValue);
     this.camera.aspect = widthValue / heightValue;
     this.camera.updateProjectionMatrix();
     if (this.reducedMotion) this.renderer.render(this.scene, this.camera);
@@ -178,7 +174,6 @@ export class LobbyScene {
     this.scene.remove(this.classroom.group);
     this.classroom.dispose();
 
-    this.renderer.dispose();
-    this.renderer.domElement.remove();
+    sharedRenderer.detach(this.container);
   }
 }

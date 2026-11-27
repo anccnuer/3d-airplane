@@ -18,6 +18,12 @@ func Decode(raw []byte, data *config.GameData) (any, error) {
 	}
 
 	switch envelope.Type {
+	case "hello":
+		var message Hello
+		if err := json.Unmarshal(raw, &message); err != nil {
+			return nil, err
+		}
+		return message, nil
 	case "create_room":
 		var message CreateRoom
 		if err := json.Unmarshal(raw, &message); err != nil {

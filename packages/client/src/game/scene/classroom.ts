@@ -10,8 +10,8 @@ export interface ClassroomScene {
 
 function createBlackboardTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 320;
+  canvas.width = 512;
+  canvas.height = 160;
   const context = canvas.getContext('2d');
 
   if (context) {
@@ -21,11 +21,11 @@ function createBlackboardTexture(): THREE.CanvasTexture {
     context.lineWidth = 4;
     context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
     context.fillStyle = '#eaf8f2';
-    context.font = 'bold 100px "Microsoft YaHei", sans-serif';
-    context.fillText('大家一起打飞机', 54, 126);
+    context.font = 'bold 50px sans-serif';
+    context.fillText('大家一起打飞机', 27, 63);
     context.fillStyle = '#67e8f9';
-    context.font = '32px "Microsoft YaHei", sans-serif';
-    context.fillText('W 起飞/油门   Q/E 滚转   鼠标转向/俯仰   左键开火', 58, 268);
+    context.font = '16px sans-serif';
+    context.fillText('W 起飞/油门   Q/E 滚转   鼠标转向/俯仰   左键开火', 29, 134);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -40,12 +40,12 @@ function createTextTexture(
   outlineColor = 'rgba(255,255,255,0.85)'
 ): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 160;
+  canvas.width = 512;
+  canvas.height = 80;
   const context = canvas.getContext('2d');
 
   if (context) {
-    context.font = `bold ${fontSize}px "Microsoft YaHei", sans-serif`;
+    context.font = `bold ${Math.round(fontSize / 2)}px sans-serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.lineJoin = 'round';
@@ -160,14 +160,18 @@ export function createClassroom(): ClassroomScene {
     group.add(baseboard);
   }
 
+  interface WindowPartSpec {
+    size: [number, number, number];
+    position: [number, number, number];
+    material: THREE.Material;
+  }
+  const windowParts: WindowPartSpec[] = [];
   const addWindowPart = (
     size: [number, number, number],
     position: [number, number, number],
     material: THREE.Material
   ): void => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
-    mesh.position.set(...position);
-    group.add(mesh);
+    windowParts.push({ size, position, material });
   };
 
   for (let side = -1; side <= 1; side += 2) {
@@ -180,9 +184,7 @@ export function createClassroom(): ClassroomScene {
       const glassX = side * (WORLD.width / 2 - 0.25 * CLASSROOM_SCALE);
       const frameX = side * (WORLD.width / 2 - 0.3 * CLASSROOM_SCALE);
 
-      const window = new THREE.Mesh(new THREE.BoxGeometry(0.12 * CLASSROOM_SCALE, height, width), glassMaterial);
-      window.position.set(glassX, y, z);
-      group.add(window);
+      addWindowPart([0.12 * CLASSROOM_SCALE, height, width], [glassX, y, z], glassMaterial);
 
       addWindowPart([bar, bar, width + 2 * bar], [frameX, y + height / 2 + bar / 2, z], metalMaterial);
       addWindowPart([bar, bar, width + 2 * bar], [frameX, y - height / 2 - bar / 2, z], metalMaterial);
@@ -218,6 +220,25 @@ export function createClassroom(): ClassroomScene {
         highlightMaterial
       );
     }
+  }
+
+  const groupedParts = new Map<string, WindowPartSpec[]>();
+  for (const part of windowParts) {
+    const key = `${part.material.uuid}:${part.size.join(',')}`;
+    const bucket = groupedParts.get(key) ?? [];
+    bucket.push(part);
+    groupedParts.set(key, bucket);
+  }
+  const matrix = new THREE.Matrix4();
+  for (const parts of groupedParts.values()) {
+    const first = parts[0];
+    const instanced = new THREE.InstancedMesh(new THREE.BoxGeometry(...first.size), first.material, parts.length);
+    parts.forEach((part, index) => {
+      matrix.makeTranslation(part.position[0], part.position[1], part.position[2]);
+      instanced.setMatrixAt(index, matrix);
+    });
+    instanced.instanceMatrix.needsUpdate = true;
+    group.add(instanced);
   }
 
   const boardFrame = new THREE.Mesh(

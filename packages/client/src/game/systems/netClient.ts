@@ -1,4 +1,5 @@
 import type { ClientMessage, ServerMessage } from '@classroom-arena/shared';
+import { decodeEnvelope, encodeEnvelope } from './protocolCodec';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -11,6 +12,14 @@ export class NetClient {
   private shouldReconnect = false;
   private reconnectTimer: number | null = null;
   private token = window.localStorage.getItem('classroom-sky-token') ?? '';
+  private negotiatedVersion = 1;
+  private forceProtocolV1 = false;
+  private outgoingTick = 0;
+  private lastAck = 0;
+  private rttMs = 0;
+  private clockOffsetMs = 0;
+  private hasClock = false;
+  private pingTimer: number | null = null;
   private readonly listeners = new Map<ServerMessage['type'], Set<MessageHandler>>();
   private readonly statusListeners = new Set<(status: ConnectionStatus) => void>();
 
@@ -38,6 +47,8 @@ export class NetClient {
 
   connect(url: string): void {
     this.url = url;
+    const parsed = new URL(url, window.location.href);
+    this.forceProtocolV1 = parsed.searchParams.get('protocol') === '1';
     this.shouldReconnect = true;
     this.setStatus('connecting');
     this.open();
@@ -46,7 +57,9 @@ export class NetClient {
   disconnect(): void {
     this.shouldReconnect = false;
     if (this.reconnectTimer !== null) window.clearTimeout(this.reconnectTimer);
+    if (this.pingTimer !== null) window.clearInterval(this.pingTimer);
     this.reconnectTimer = null;
+    this.pingTimer = null;
     this.socket?.close();
     this.socket = null;
     this.setStatus('disconnected');
@@ -79,17 +92,30 @@ export class NetClient {
   private open(): void {
     if (!this.url) return;
     const socket = new WebSocket(this.url);
+    socket.binaryType = 'arraybuffer';
     this.socket = socket;
 
     socket.onopen = () => {
+      this.negotiatedVersion = 1;
+      this.outgoingTick = 0;
+      this.lastAck = 0;
       this.setStatus('connected');
+      if (!this.forceProtocolV1) this.sendRaw({ type: 'hello', versions: [2, 1] }, true);
       if (this.token) this.send({ type: 'reconnect', token: this.token });
+      this.pingTimer = window.setInterval(() => this.send({ type: 'ping', at: Date.now() }), 1000);
     };
 
     socket.onmessage = (event) => {
       let message: ServerMessage;
       try {
-        message = JSON.parse(event.data as string) as ServerMessage;
+        if (event.data instanceof ArrayBuffer) {
+          const frame = decodeEnvelope(event.data);
+          if (!frame) return;
+          this.lastAck = frame.ack;
+          message = frame.message;
+        } else {
+          message = JSON.parse(event.data as string) as ServerMessage;
+        }
       } catch (error) {
         console.error('Invalid server message', error);
         return;
@@ -99,6 +125,8 @@ export class NetClient {
 
     socket.onclose = () => {
       this.socket = null;
+      if (this.pingTimer !== null) window.clearInterval(this.pingTimer);
+      this.pingTimer = null;
       this.setStatus('disconnected');
       if (!this.shouldReconnect) return;
       this.reconnectTimer = window.setTimeout(() => this.open(), 1200);
@@ -110,14 +138,53 @@ export class NetClient {
   }
 
   private send(message: ClientMessage): void {
+    this.sendRaw(message, false);
+  }
+
+  private sendRaw(message: ClientMessage, forceBinary = false): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       console.error('WebSocket is not connected');
+      return;
+    }
+    if (!this.forceProtocolV1 && (forceBinary || this.negotiatedVersion >= 2)) {
+      this.outgoingTick += 1;
+      this.socket.send(encodeEnvelope(message, this.outgoingTick, this.lastAck));
       return;
     }
     this.socket.send(JSON.stringify(message));
   }
 
+  getProtocolVersion(): number {
+    return this.negotiatedVersion;
+  }
+
+  getLatestAck(): number {
+    return this.lastAck;
+  }
+
+  getRttMs(): number {
+    return this.rttMs;
+  }
+
+  getServerClockOffsetMs(): number {
+    return this.clockOffsetMs;
+  }
+
+  hasServerClock(): boolean {
+    return this.hasClock;
+  }
+
   private emit(message: ServerMessage): void {
+    if (message.type === 'hello_ack') {
+      this.negotiatedVersion = message.version;
+    }
+    if (message.type === 'pong') {
+      const measured = Math.max(0, Date.now() - message.at);
+      this.rttMs = this.rttMs === 0 ? measured : this.rttMs * 0.8 + measured * 0.2;
+      const observed = message.serverTime + this.rttMs / 2 - Date.now();
+      this.clockOffsetMs = this.hasClock ? this.clockOffsetMs * 0.8 + observed * 0.2 : observed;
+      this.hasClock = true;
+    }
     if (message.type === 'welcome') {
       this.playerId = message.playerId;
       this.token = message.token;

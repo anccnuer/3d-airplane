@@ -93,7 +93,19 @@ export interface Snapshot {
   bullets: BulletState[];
 }
 
+export interface SnapshotDelta {
+  type: 'snapshot_delta';
+  baseTick: number;
+  tick: number;
+  serverTime: number;
+  removedPlayers?: string[];
+  removedBullets?: number[];
+  players?: PlayerState[];
+  bullets?: BulletState[];
+}
+
 export type ClientMessage =
+  | { type: 'hello'; versions: number[] }
   | { type: 'create_room'; name: string; roomName: string; planeId: string }
   | { type: 'join_room'; name: string; code: string; planeId: string }
   | { type: 'reconnect'; token: string }
@@ -104,11 +116,13 @@ export type ClientMessage =
   | { type: 'ping'; at: number };
 
 export type ServerMessage =
+  | { type: 'hello_ack'; version: number; tickRate: number; serverTime: number }
   | { type: 'welcome'; playerId: string; token: string; serverTime: number }
   | { type: 'room_list'; rooms: RoomSummary[] }
   | { type: 'room_state'; room: RoomInfo }
   | { type: 'match_start'; startsAt: number; endsAt: number }
   | Snapshot
+  | SnapshotDelta
   | { type: 'game_events'; events: GameEvent[] }
   | { type: 'result'; standings: Standing[]; durationSeconds: number }
   | { type: 'error'; message: string }

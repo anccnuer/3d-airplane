@@ -8,15 +8,112 @@ import (
 	"sync"
 	"time"
 
+	"classroom-arena/server/internal/protocol"
 	"github.com/gorilla/websocket"
 )
 
 type smokeClient struct {
-	conn    *websocket.Conn
-	mu      sync.Mutex
-	writeMu sync.Mutex
-	history []map[string]any
-	label   string
+	conn         *websocket.Conn
+	mu           sync.Mutex
+	writeMu      sync.Mutex
+	history      []map[string]any
+	label        string
+	lastSnapshot map[string]any
+}
+
+func (c *smokeClient) applyDelta(message map[string]any) map[string]any {
+	if isType(message, "snapshot") {
+		c.lastSnapshot = message
+		return message
+	}
+	if !isType(message, "snapshot_delta") {
+		return nil
+	}
+	baseTick, _ := message["baseTick"].(float64)
+	tick, _ := message["tick"].(float64)
+	if c.lastSnapshot == nil || baseTick == tick {
+		c.lastSnapshot = map[string]any{
+			"type": "snapshot", "tick": tick, "serverTime": message["serverTime"],
+			"players": message["players"], "bullets": message["bullets"],
+		}
+		return c.lastSnapshot
+	}
+	players := map[string]any{}
+	if c.lastSnapshot != nil {
+		for _, entry := range asSlice(c.lastSnapshot["players"]) {
+			player, _ := entry.(map[string]any)
+			if id, ok := player["id"].(string); ok {
+				players[id] = player
+			}
+		}
+	}
+	for _, id := range asStrings(message["removedPlayers"]) {
+		delete(players, id)
+	}
+	for _, entry := range asSlice(message["players"]) {
+		player, _ := entry.(map[string]any)
+		if id, ok := player["id"].(string); ok {
+			players[id] = player
+		}
+	}
+	bullets := map[string]any{}
+	if c.lastSnapshot != nil {
+		for _, entry := range asSlice(c.lastSnapshot["bullets"]) {
+			bullet, _ := entry.(map[string]any)
+			if id, ok := bullet["id"].(float64); ok {
+				bullets[fmt.Sprint(id)] = bullet
+			}
+		}
+	}
+	for _, id := range asFloats(message["removedBullets"]) {
+		delete(bullets, fmt.Sprint(id))
+	}
+	for _, entry := range asSlice(message["bullets"]) {
+		bullet, _ := entry.(map[string]any)
+		if id, ok := bullet["id"].(float64); ok {
+			bullets[fmt.Sprint(id)] = bullet
+		}
+	}
+	c.lastSnapshot = map[string]any{
+		"type": "snapshot", "tick": tick, "serverTime": message["serverTime"],
+		"players": values(players), "bullets": values(bullets),
+	}
+	return c.lastSnapshot
+}
+
+func asSlice(value any) []any {
+	result, _ := value.([]any)
+	return result
+}
+
+func asStrings(value any) []string {
+	items := asSlice(value)
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if text, ok := item.(string); ok {
+			result = append(result, text)
+		}
+	}
+	return result
+}
+
+func asFloats(value any) []float64 {
+	items := asSlice(value)
+	result := make([]float64, 0, len(items))
+	for _, item := range items {
+		if number, ok := item.(float64); ok {
+			result = append(result, number)
+		}
+	}
+	return result
+}
+
+func values(source map[string]any) []any {
+	result := make([]any, 0, len(source))
+	for _, value := range source {
+		result = append(result, value)
+	}
+	return result
 }
 
 func connect(label, url string) (*smokeClient, error) {
@@ -35,12 +132,19 @@ func (c *smokeClient) readLoop() {
 		if err != nil {
 			return
 		}
+		if payload, _, unwrapErr := protocol.UnwrapEnvelope(raw); unwrapErr == nil {
+			raw = payload
+		}
 		var message map[string]any
 		if err := json.Unmarshal(raw, &message); err != nil {
 			continue
 		}
 		c.mu.Lock()
-		c.history = append(c.history, message)
+		if normalized := c.applyDelta(message); normalized != nil {
+			c.history = append(c.history, normalized)
+		} else {
+			c.history = append(c.history, message)
+		}
 		c.mu.Unlock()
 	}
 }
@@ -154,6 +258,15 @@ func main() {
 	first, err := connect("player-1", url)
 	if err != nil {
 		panic(err)
+	}
+	if os.Getenv("SMOKE_PROTOCOL_V2") == "1" {
+		frame, err := protocol.MarshalEnvelope(protocol.Hello{Type: "hello", Versions: []int{2, 1}}, 0, 0)
+		if err != nil {
+			panic(err)
+		}
+		if err := first.conn.WriteMessage(websocket.BinaryMessage, frame); err != nil {
+			panic(err)
+		}
 	}
 	second, err := connect("player-2", url)
 	if err != nil {

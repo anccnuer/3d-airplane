@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PLAYER_COLORS, type RoomInfo, type Snapshot } from '@classroom-arena/shared';
+import { PLAYER_COLORS, type RoomInfo, type Snapshot, type SnapshotDelta } from '@classroom-arena/shared';
 import { ThreeGame, type HudState } from './ThreeGame';
 import type { NetClient } from './systems/netClient';
 import { Hud, type RadarPlayer } from '../ui/Hud';
@@ -8,6 +8,31 @@ interface GameAppProps {
   net: NetClient;
   room: RoomInfo | null;
   onFinish: () => void;
+}
+
+function applySnapshotDelta(base: Snapshot | null, delta: SnapshotDelta): Snapshot {
+  if (!base || delta.baseTick === delta.tick) {
+    return {
+      type: 'snapshot',
+      tick: delta.tick,
+      serverTime: delta.serverTime,
+      players: delta.players ?? [],
+      bullets: delta.bullets ?? []
+    };
+  }
+  const players = new Map(base.players.map((player) => [player.id, player]));
+  const bullets = new Map(base.bullets.map((bullet) => [bullet.id, bullet]));
+  for (const id of delta.removedPlayers ?? []) players.delete(id);
+  for (const id of delta.removedBullets ?? []) bullets.delete(id);
+  for (const player of delta.players ?? []) players.set(player.id, player);
+  for (const bullet of delta.bullets ?? []) bullets.set(bullet.id, bullet);
+  return {
+    type: 'snapshot',
+    tick: delta.tick,
+    serverTime: delta.serverTime,
+    players: [...players.values()],
+    bullets: [...bullets.values()]
+  };
 }
 
 const EMPTY_HUD: HudState = {
@@ -43,7 +68,9 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
 
     const game = new ThreeGame(container, {
       sendInput: (input) => net.sendInput(input),
-      onHud: setHud
+      onHud: setHud,
+      getClockOffsetMs: () => net.getServerClockOffsetMs(),
+      hasClock: () => net.hasServerClock()
     });
     gameRef.current = game;
     game.start();
@@ -74,6 +101,12 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
       gameRef.current?.applySnapshot(message);
     });
 
+    const offDelta = net.on('snapshot_delta', (message) => {
+      const snapshot = applySnapshotDelta(snapshotRef.current, message);
+      snapshotRef.current = snapshot;
+      gameRef.current?.applySnapshot(snapshot);
+    });
+
     const offEvents = net.on('game_events', (message) => {
       gameRef.current?.handleEvents(message.events);
 
@@ -101,6 +134,7 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
 
     return () => {
       offSnapshot();
+      offDelta();
       offEvents();
       offResult();
       if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);

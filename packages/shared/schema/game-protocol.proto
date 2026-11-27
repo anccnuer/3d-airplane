@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package arena.v2;
+
+message Envelope {
+  uint32 version = 1;
+  uint64 session_id = 2;
+  uint32 tick = 3;
+  uint32 ack = 4;
+  oneof payload {
+    Hello hello = 5;
+    HelloAck hello_ack = 6;
+    ClientInput input = 7;
+    SnapshotDelta snapshot = 8;
+    EventBatch events = 9;
+  }
+}
+
+message Hello {
+  repeated uint32 versions = 1;
+}
+
+message HelloAck {
+  uint32 version = 1;
+  uint32 tick_rate = 2;
+  uint64 server_time = 3;
+}
+
+message ClientInput {
+  uint32 seq = 1;
+  uint32 tick = 2;
+  int32 yaw = 3;
+  int32 pitch = 4;
+  int32 roll = 5;
+  int32 throttle = 6;
+  bool fire = 7;
+}
+
+message SnapshotDelta {
+  uint32 base_tick = 1;
+  uint32 tick = 2;
+  uint64 server_time = 3;
+  repeated uint32 removed_players = 4;
+  repeated uint32 removed_bullets = 5;
+  repeated PlayerState players = 6;
+  repeated BulletState bullets = 7;
+}
+
+message PlayerState {
+  string id = 1;
+  Vec3 position = 2;
+  Vec3 rotation = 3;
+  Vec3 velocity = 4;
+  int32 speed = 5;
+  int32 hp = 6;
+  bool alive = 7;
+  uint64 invulnerable_until = 8;
+  uint64 respawn_at = 9;
+  bool parked = 10;
+}
+
+message BulletState {
+  uint32 id = 1;
+  string owner_id = 2;
+  Vec3 position = 3;
+  Vec3 direction = 4;
+}
+
+message Vec3 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message EventBatch {
+  repeated GameEvent events = 1;
+}
+
+message GameEvent {
+  uint32 id = 1;
+  string type = 2;
+  uint64 at = 3;
+  optional string source_id = 4;
+  optional string target_id = 5;
+  optional Vec3 position = 6;
+  optional string text = 7;
+}

@@ -30,10 +30,7 @@ export function PlaneCard({ plane, active, onSelect }: PlaneCardProps) {
         <Plane size={20} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="font-title text-sm font-semibold text-ink">{plane.name}</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">{plane.model}</span>
-        </span>
+        <span className="font-title text-base font-semibold text-ink">{plane.name}</span>
         <span className="mt-0.5 block text-xs text-ink-muted">{plane.role}</span>
         <span className="mt-2 block text-[11px] leading-5 text-ink-dim">{plane.description}</span>
       </span>

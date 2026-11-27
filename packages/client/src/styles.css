@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: 'Oswald';
-  src: url('/fonts/oswald-400.woff2') format('woff2');
+  src: url('/fonts/oswald-regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -12,7 +12,7 @@
 
 @font-face {
   font-family: 'Oswald';
-  src: url('/fonts/oswald-500.woff2') format('woff2');
+  src: url('/fonts/oswald-regular.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -20,7 +20,7 @@
 
 @font-face {
   font-family: 'Oswald';
-  src: url('/fonts/oswald-600.woff2') format('woff2');
+  src: url('/fonts/oswald-regular.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -28,7 +28,7 @@
 
 @font-face {
   font-family: 'Oswald';
-  src: url('/fonts/oswald-700.woff2') format('woff2');
+  src: url('/fonts/oswald-regular.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -59,8 +59,8 @@
 }
 
 @font-face {
-  font-family: 'ZCOOL QingKe HuangYou';
-  src: url('/fonts/zcool-qingke-huangyou.woff2') format('woff2');
+  font-family: 'ShanHai XiaRi YanHuoW';
+  src: url('/fonts/font.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -97,8 +97,8 @@
     --dusk: #39495f;
 
     /* 字体族 */
-    --font-display: 'Oswald', 'ZCOOL QingKe HuangYou', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    --font-title: 'Oswald', 'ZCOOL QingKe HuangYou', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-display: 'Oswald', 'ShanHai XiaRi YanHuoW', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-title: 'Oswald', 'ShanHai XiaRi YanHuoW', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     --font-body: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
     --font-label: 'Oswald', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;

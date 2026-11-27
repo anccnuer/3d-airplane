@@ -53,7 +53,7 @@ export function MainMenu({ status, error, rooms, onConnect, onCreate, onJoin }: 
               <Plane size={20} aria-hidden="true" />
             </div>
             <div>
-              <p className="font-display text-sm font-bold uppercase tracking-[0.14em] text-ink">大家一起打飞机</p>
+              <p className="font-game-title text-sm tracking-[0.08em] text-ink">大家一起打飞机</p>
             </div>
           </div>
           <SignalMeter status={signalStatus} />
@@ -63,7 +63,7 @@ export function MainMenu({ status, error, rooms, onConnect, onCreate, onJoin }: 
       <main className="relative z-10 mx-auto flex min-h-screen max-w-[1240px] flex-col gap-6 px-6 pb-12 pt-24 lg:flex-row">
         <div className="flex w-full flex-col gap-6 lg:w-[460px]">
           <Panel index="BRIEF 01" className="animate-fade-up">
-            <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight text-ink text-shadow-glow lg:text-6xl">
+            <h1 className="font-game-title text-5xl leading-[1.05] tracking-tight text-ink text-shadow-glow lg:text-6xl">
               大家一起打飞机
             </h1>
           </Panel>

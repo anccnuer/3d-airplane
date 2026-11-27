@@ -1,23 +1,77 @@
+import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+import { PLANE_SCALE } from '@classroom-arena/shared';
+import { disposeObject3D } from '../game/scene/disposal';
+import { createPlaneMesh } from '../game/scene/planeFactory';
+
 interface PlanePreviewProps {
   planeId: string;
   color?: string;
 }
 
-const PATHS: Record<string, string> = {
-  sparrow: 'M12 2 L18 11 L30 14 L18 17 L12 26 L9 17 L2 14 L9 11 Z',
-  falcon: 'M12 1 L19 10 L31 13 L20 17 L13 27 L10 17 L1 13 L10 10 Z',
-  anvil: 'M12 3 L20 10 L30 15 L20 18 L13 26 L10 18 L2 15 L10 10 Z',
-  dragonfly: 'M12 2 L17 9 L28 10 L18 15 L13 27 L10 15 L2 10 L10 9 Z',
-  meteor: 'M12 1 L19 11 L30 15 L19 17 L12 27 L10 17 L1 15 L10 11 Z'
-};
+export function PlanePreview({ planeId, color }: PlanePreviewProps) {
+  const mountRef = useRef<HTMLDivElement | null>(null);
 
-export function PlanePreview({ planeId, color = '#22D3EE' }: PlanePreviewProps) {
-  return (
-    <div className="flex h-full w-full items-center justify-center overflow-hidden" aria-hidden="true">
-      <svg viewBox="0 0 32 28" className="h-3/4 w-3/4 animate-pulse" style={{ color }} role="presentation">
-        <path d={PATHS[planeId] ?? PATHS.sparrow} fill="currentColor" opacity="0.85" />
-        <circle cx="12" cy="14" r="2" fill="#0B1220" opacity="0.8" />
-      </svg>
-    </div>
-  );
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 50);
+    camera.position.set(5.8, 3.2, 7.4);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    mount.appendChild(renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight('#ffffff', '#334155', 2.2));
+    const keyLight = new THREE.DirectionalLight('#f8fafc', 2.4);
+    keyLight.position.set(4, 6, 6);
+    scene.add(keyLight);
+
+    const plane = createPlaneMesh(planeId, color);
+    plane.scale.setScalar(1 / PLANE_SCALE);
+    scene.add(plane);
+
+    const resize = () => {
+      const width = Math.max(mount.clientWidth, 1);
+      const height = Math.max(mount.clientHeight, 1);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      if (reducedMotion) renderer.render(scene, camera);
+    };
+    resize();
+
+    const observer = new ResizeObserver(resize);
+    observer.observe(mount);
+
+    let frameId = 0;
+    let lastFrameTime = performance.now();
+    const animate = () => {
+      frameId = requestAnimationFrame(animate);
+      const frameTime = performance.now();
+      plane.rotation.y += Math.min((frameTime - lastFrameTime) / 1000, 0.05) * 0.5;
+      lastFrameTime = frameTime;
+      const propellers = plane.userData.propellers ?? (plane.userData.propeller ? [plane.userData.propeller] : []);
+      for (const propeller of propellers) propeller.rotation.z += 0.24;
+      renderer.render(scene, camera);
+    };
+    if (!reducedMotion) animate();
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      observer.disconnect();
+      scene.remove(plane);
+      disposeObject3D(plane);
+      renderer.dispose();
+      renderer.domElement.remove();
+    };
+  }, [planeId, color]);
+
+  return <div ref={mountRef} className="h-full w-full" aria-hidden="true" />;
 }

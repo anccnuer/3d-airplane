@@ -74,7 +74,7 @@ export function Hangar({
             <p className="mt-1 text-xs leading-5 text-ink-dim">{plane.description}</p>
 
             <div className="instrument-grid mt-4 overflow-hidden rounded-xl border border-line bg-surface-inset/60">
-              <div className="min-h-[260px]">
+              <div className="h-[280px]">
                 <PlanePreview planeId={selectedPlaneId} color={plane.color} />
               </div>
             </div>

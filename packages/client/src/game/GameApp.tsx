@@ -1,38 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { PLAYER_COLORS, type RoomInfo, type Snapshot, type SnapshotDelta } from '@classroom-arena/shared';
+import { PLAYER_COLORS, type Snapshot, type RoomInfo } from '@classroom-arena/shared';
 import { ThreeGame, type HudState } from './ThreeGame';
 import type { NetClient } from './systems/netClient';
+import { applySnapshotDelta, toBaseline, type DeltaBaseline } from './systems/snapshotDelta';
 import { Hud, type RadarPlayer } from '../ui/Hud';
 
 interface GameAppProps {
   net: NetClient;
   room: RoomInfo | null;
   onFinish: () => void;
-}
-
-function applySnapshotDelta(base: Snapshot | null, delta: SnapshotDelta): Snapshot {
-  if (!base || delta.baseTick === delta.tick) {
-    return {
-      type: 'snapshot',
-      tick: delta.tick,
-      serverTime: delta.serverTime,
-      players: delta.players ?? [],
-      bullets: delta.bullets ?? []
-    };
-  }
-  const players = new Map(base.players.map((player) => [player.id, player]));
-  const bullets = new Map(base.bullets.map((bullet) => [bullet.id, bullet]));
-  for (const id of delta.removedPlayers ?? []) players.delete(id);
-  for (const id of delta.removedBullets ?? []) bullets.delete(id);
-  for (const player of delta.players ?? []) players.set(player.id, player);
-  for (const bullet of delta.bullets ?? []) bullets.set(bullet.id, bullet);
-  return {
-    type: 'snapshot',
-    tick: delta.tick,
-    serverTime: delta.serverTime,
-    players: [...players.values()],
-    bullets: [...bullets.values()]
-  };
 }
 
 const EMPTY_HUD: HudState = {
@@ -53,6 +29,7 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const gameRef = useRef<ThreeGame | null>(null);
   const snapshotRef = useRef<Snapshot | null>(null);
+  const baselineRef = useRef<DeltaBaseline | null>(null);
   const roomRef = useRef<RoomInfo | null>(room);
   const flashTimer = useRef<number | null>(null);
   const [hud, setHud] = useState<HudState>(EMPTY_HUD);
@@ -83,7 +60,6 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
 
   const localPlayer = room?.players.find((player) => player.id === net.playerId) ?? null;
   const localPlayerId = localPlayer?.id ?? '';
-  const localPlaneId = localPlayer?.planeId ?? '';
 
   useEffect(() => {
     if (!room) return;
@@ -92,19 +68,22 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
 
   useEffect(() => {
     if (!localPlayerId) return;
-    gameRef.current?.setLocalPlayer(localPlayerId, localPlaneId);
-  }, [localPlayerId, localPlaneId, net]);
+    gameRef.current?.setLocalPlayer(localPlayerId);
+  }, [localPlayerId, net]);
 
   useEffect(() => {
     const offSnapshot = net.on('snapshot', (message) => {
       snapshotRef.current = message;
+      baselineRef.current = toBaseline(message);
       gameRef.current?.applySnapshot(message);
     });
 
     const offDelta = net.on('snapshot_delta', (message) => {
-      const snapshot = applySnapshotDelta(snapshotRef.current, message);
-      snapshotRef.current = snapshot;
-      gameRef.current?.applySnapshot(snapshot);
+      const result = applySnapshotDelta(baselineRef.current, message);
+      baselineRef.current = result.baseline;
+      if (!result.snapshot) return;
+      snapshotRef.current = result.snapshot;
+      gameRef.current?.applySnapshot(result.snapshot);
     });
 
     const offEvents = net.on('game_events', (message) => {

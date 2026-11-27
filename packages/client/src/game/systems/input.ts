@@ -12,15 +12,21 @@ function shapeAxis(value: number): number {
   return Math.sign(value) * Math.pow(magnitude, RESPONSE_EXPONENT);
 }
 
+function decayStick(value: number, dt: number): number {
+  return value * Math.exp(-clamp(dt, 0, 0.1) / STICK_RECENTER_SECONDS);
+}
+
 export class InputSystem {
   private readonly keys = new Set<string>();
   private stickYaw = 0;
   private stickPitch = 0;
+  private pendingYaw = 0;
+  private pendingPitch = 0;
   private mouseDown = false;
   private sequence = 0;
   private locked = false;
 
-  constructor(private readonly element: HTMLElement) {
+  constructor(private readonly element: HTMLElement, private readonly isPointerLocked: () => boolean = () => this.locked) {
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('blur', this.handleBlur);
@@ -33,6 +39,8 @@ export class InputSystem {
   resetMotion(): void {
     this.stickYaw = 0;
     this.stickPitch = 0;
+    this.pendingYaw = 0;
+    this.pendingPitch = 0;
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
@@ -51,9 +59,9 @@ export class InputSystem {
   };
 
   private handleMouseMove = (event: MouseEvent): void => {
-    if (!this.locked) return;
-    this.stickYaw = clamp(this.stickYaw + event.movementX * MOUSE_SENSITIVITY, -1, 1);
-    this.stickPitch = clamp(this.stickPitch - event.movementY * MOUSE_SENSITIVITY, -1, 1);
+    if (!this.isPointerLocked()) return;
+    this.pendingYaw += event.movementX * MOUSE_SENSITIVITY;
+    this.pendingPitch -= event.movementY * MOUSE_SENSITIVITY;
   };
 
   private handleMouseDown = (event: MouseEvent): void => {
@@ -78,9 +86,10 @@ export class InputSystem {
   };
 
   sample(tick: number, dt: number): InputCommand {
-    const decay = Math.exp(-clamp(dt, 0, 0.1) / STICK_RECENTER_SECONDS);
-    this.stickYaw *= decay;
-    this.stickPitch *= decay;
+    this.stickYaw = clamp(this.isPointerLocked() ? decayStick(this.stickYaw, dt) + this.pendingYaw : 0, -1, 1);
+    this.stickPitch = clamp(this.isPointerLocked() ? decayStick(this.stickPitch, dt) + this.pendingPitch : 0, -1, 1);
+    this.pendingYaw = 0;
+    this.pendingPitch = 0;
 
     let roll = 0;
     let throttle = 0;

@@ -20,7 +20,6 @@ import { Effects } from './scene/effects';
 import { createPlaneMesh, type PlaneMesh } from './scene/planeFactory';
 import { InputSystem } from './systems/input';
 import { JitterBuffer } from './systems/jitterBuffer';
-import { PredictionSystem } from './systems/prediction';
 import { RenderStateSystem } from './systems/renderState';
 
 export interface HudState {
@@ -70,7 +69,6 @@ export class ThreeGame {
   private readonly input: InputSystem;
   private readonly renderState = new RenderStateSystem();
   private readonly jitter = new JitterBuffer<Snapshot>(100);
-  private readonly prediction = new PredictionSystem();
   private readonly planes = new Map<string, PlaneView>();
   private readonly metadata = new Map<string, PlayerMeta>();
 
@@ -125,11 +123,9 @@ export class ThreeGame {
     sharedRenderer.resize(width, height);
   };
 
-  setLocalPlayer(playerId: string, planeId: string): void {
+  setLocalPlayer(playerId: string): void {
     if (this.localId && this.localId === playerId) return;
     this.localId = playerId;
-    this.prediction.configurePlane(planeId);
-    this.prediction.reset();
     this.renderState.configureLocal(playerId);
     this.renderState.reset();
     this.jitter.reset();
@@ -183,9 +179,6 @@ export class ThreeGame {
     if (local?.parked && !wasParked) {
       this.input.resetMotion();
     }
-    if (local && this.localId) {
-      this.prediction.rebase(local, snapshot.tick);
-    }
     this.effects.syncBullets(snapshot.bullets);
   }
 
@@ -212,16 +205,13 @@ export class ThreeGame {
     const frameTime = performance.now();
     const dt = Math.min((frameTime - this.lastFrameTime) / 1000, 0.05);
     this.lastFrameTime = frameTime;
-    const input = this.input.sample(this.inputTick, dt);
 
     this.inputSendAccumulator += dt;
     const inputInterval = 1 / TICK_RATE;
     while (this.inputSendAccumulator >= inputInterval) {
       this.inputSendAccumulator -= inputInterval;
       this.inputTick += 1;
-      const stamped = { ...input, tick: this.inputTick };
-      this.prediction.predict(stamped, stamped.tick);
-      this.callbacks.sendInput(stamped);
+      this.callbacks.sendInput(this.input.sample(this.inputTick, inputInterval));
     }
 
     const ready = this.jitter.take(this.serverNow());
@@ -229,21 +219,6 @@ export class ThreeGame {
     this.renderState.update(dt);
 
     const players = this.renderState.getPlayers();
-    const predicted = this.prediction.getState();
-    if (predicted && this.localId) {
-      const authoritative = this.renderState.getLocalState();
-      const index = players.findIndex((player) => player.id === this.localId);
-      const merged: PlayerState = {
-        ...predicted,
-        id: this.localId,
-        hp: authoritative?.hp ?? predicted.hp,
-        alive: authoritative?.alive ?? predicted.alive,
-        invulnerableUntil: authoritative?.invulnerableUntil ?? predicted.invulnerableUntil,
-        respawnAt: authoritative?.respawnAt ?? predicted.respawnAt
-      };
-      if (index >= 0) players[index] = merged;
-      else players.push(merged);
-    }
     this.syncPlaneMeshes(players, dt);
     this.effects.update(dt);
     this.updateCamera(dt);

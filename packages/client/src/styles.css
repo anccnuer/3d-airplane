@@ -34,6 +34,15 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'ShanHai XiaRi YanHuoW';
+  src: url('/fonts/font.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+4E00-9FFF, U+3000-303F, U+FF00-FFEF;
+}
+
 @layer base {
   :root {
     color-scheme: light;
@@ -268,6 +277,11 @@
     box-shadow: 0 4px 14px rgba(29, 34, 32, 0.18);
     backdrop-filter: blur(3px);
     color: var(--text);
+  }
+
+  .font-game-title {
+    font-family: 'ShanHai XiaRi YanHuoW', var(--font-display);
+    font-weight: 400;
   }
 
   .label-caps {

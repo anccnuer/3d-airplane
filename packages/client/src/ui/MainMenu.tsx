@@ -53,7 +53,7 @@ export function MainMenu({ status, error, rooms, onConnect, onCreate, onJoin }: 
               <Plane size={20} aria-hidden="true" />
             </div>
             <div>
-              <p className="font-display text-base font-bold uppercase tracking-[0.1em] text-ink">大家一起打飞机</p>
+              <p className="font-game-title text-sm tracking-[0.08em] text-ink">大家一起打飞机</p>
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">flight journal · 飞行日志</p>
             </div>
           </div>
@@ -74,7 +74,7 @@ export function MainMenu({ status, error, rooms, onConnect, onCreate, onJoin }: 
                 <path d="M8 44c18-16 36-16 54 0s36 16 52 0" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 <path d="M24 26l16-9 8 12-12 3z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
               </svg>
-              <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight text-ink text-shadow-glow lg:text-6xl">
+              <h1 className="font-game-title text-5xl leading-[1.05] tracking-tight text-ink text-shadow-glow lg:text-6xl">
                 大家一起打飞机
               </h1>
               <p className="mt-3 max-w-[340px] text-sm leading-6 text-ink-muted">

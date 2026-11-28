@@ -124,6 +124,9 @@ export function App() {
 
   return (
     <>
+      <a href="#main" className="skip-link">
+        跳到主要内容
+      </a>
       <LobbyScene />
       <div className="relative z-10 min-h-screen">
         {screen === 'hangar' ? (

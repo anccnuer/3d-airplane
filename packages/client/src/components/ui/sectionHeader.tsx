@@ -18,7 +18,7 @@ export function SectionHeader({ index, label, title, right, className }: Section
         {index ? (
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">{index}</span>
         ) : null}
-        <span className="label-caps !text-sky">{label}</span>
+        <span className="label-caps !text-accent">{label}</span>
         {title ? <h2 className="font-title truncate text-lg font-semibold text-ink">{title}</h2> : null}
       </div>
       {right ? <div className="shrink-0">{right}</div> : null}

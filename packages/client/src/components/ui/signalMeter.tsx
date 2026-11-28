@@ -18,7 +18,7 @@ const statusText: Record<SignalStatus, string> = {
 /** 服务器连接状态：分段竖条仪表，附文字标签（不靠颜色单独表意）。 */
 export function SignalMeter({ status, label = 'SERVER' }: SignalMeterProps) {
   const filled = status === 'connected' ? SEGMENTS : status === 'connecting' ? 3 : 0;
-  const tone = status === 'connected' ? 'text-success' : status === 'connecting' ? 'text-accent' : 'text-ink-dim';
+  const tone = status === 'connected' ? 'text-success' : status === 'connecting' ? 'text-accent' : 'text-ink-muted';
 
   return (
     <div className="flex items-center gap-3">
@@ -29,7 +29,7 @@ export function SignalMeter({ status, label = 'SERVER' }: SignalMeterProps) {
             <span
               key={index}
               className={cn(
-                'w-1.5 rounded-sm transition-all duration-300',
+                'w-1.5 rounded-[2px_3px_1px_2px] border border-line-strong/60 transition-all duration-300',
                 active
                   ? status === 'connected'
                     ? 'h-7 bg-success'
@@ -40,8 +40,8 @@ export function SignalMeter({ status, label = 'SERVER' }: SignalMeterProps) {
           );
         })}
       </div>
-      <span className={cn('font-mono text-xs', tone)}>{statusText[status]}</span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-dim">{label}</span>
+      <span className={cn('font-mono text-xs font-semibold', tone)}>{statusText[status]}</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">{label}</span>
     </div>
   );
 }

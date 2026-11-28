@@ -141,7 +141,7 @@ export function GameApp({ net, room, onFinish }: GameAppProps) {
   }, []);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#0B1220]">
+    <div className="relative h-screen w-screen overflow-hidden bg-shell">
       <div ref={containerRef} className="absolute inset-0" />
       <Hud hud={hud} killFeed={killFeed} radarPlayers={radarPlayers} hitFlash={hitFlash} />
     </div>

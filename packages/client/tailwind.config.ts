@@ -51,16 +51,16 @@ export default {
         mono: ['var(--font-mono)']
       },
       boxShadow: {
-        glow: '0 0 24px rgba(232, 163, 61, 0.28)',
-        panel: '0 18px 40px rgba(0, 0, 0, 0.45)'
+        glow: '0 3px 0 rgba(217, 200, 168, 0.8), 0 8px 20px rgba(68, 48, 30, 0.22)',
+        panel: '0 6px 0 rgba(217, 200, 168, 0.75), 0 16px 34px rgba(68, 48, 30, 0.28)'
       },
       keyframes: {
         'fade-up': {
-          '0%': { opacity: '0', transform: 'translateY(12px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' }
+          '0%': { opacity: '0', transform: 'translateY(9px) rotate(-0.4deg)' },
+          '100%': { opacity: '1', transform: 'translateY(0) rotate(0)' }
         },
         'pulse-soft': {
-          '0%, 100%': { opacity: '0.65' },
+          '0%, 100%': { opacity: '0.7' },
           '50%': { opacity: '1' }
         }
       },

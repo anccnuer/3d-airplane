@@ -6,8 +6,8 @@ import { createPlaneMesh, type PlaneMesh } from './planeFactory';
 import { createAmbientLights } from './lighting';
 import { sharedRenderer } from '../render/Renderer';
 
-/** 大厅暮色天空：比对局内的白天更暗，让教室边缘没入夜色，同时保证文字对比度。 */
-const DUSK = '#39495f';
+/** 大厅暮色天空：暖灰棕，让教室退到暖纸卡片后面。 */
+const DUSK = '#4c4a46';
 
 /** 环绕中心：教室前方、黑板一侧。 */
 const ORBIT_CENTER = new THREE.Vector3(0, 4, -2);

@@ -36,36 +36,43 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
 
-    /* 外壳与表面 */
-    --shell-ink: #0c1418;
-    --surface: rgba(18, 28, 34, 0.74);
-    --surface-solid: #131e24;
-    --surface-inset: rgba(8, 14, 18, 0.62);
-    --surface-raised: rgba(26, 38, 45, 0.86);
-    --border: rgba(186, 230, 253, 0.14);
-    --border-strong: rgba(186, 230, 253, 0.3);
+    /* 外壳：暗色是 3D 舞台的兜底，界面本身是暖纸。 */
+    --shell-ink: #1d2220;
+    --surface: rgba(250, 243, 227, 0.97);
+    --surface-solid: #f3e8d2;
+    --surface-inset: rgba(228, 216, 194, 0.62);
+    --surface-raised: #fcf6e9;
+    --border: rgba(74, 60, 46, 0.28);
+    --border-strong: rgba(74, 60, 46, 0.52);
 
-    /* 强调色：黄铜琥珀为主，天蓝为次 */
-    --accent: #e8a33d;
-    --accent-soft: rgba(232, 163, 61, 0.16);
-    --sky: #7dd3fc;
-    --sky-soft: rgba(125, 211, 252, 0.16);
-    --success: #3fcb6e;
-    --danger: #f87171;
+    /* 强调：赭橙主色 + 铅笔蓝次色，都是纸面颜料色。 */
+    --accent: #b76132;
+    --accent-soft: rgba(183, 97, 50, 0.13);
+    --sky: #4d7f8c;
+    --sky-soft: rgba(77, 127, 140, 0.13);
+    --success: #3f7651;
+    --danger: #a63f3f;
 
-    /* 文字 */
-    --text: #f2f6f8;
-    --text-muted: #9fb3bc;
-    --text-dim: #6b8189;
+    /* 墨色文字 */
+    --text: #2f2a24;
+    --text-muted: #62584c;
+    --text-dim: #796f61;
 
     /* 大厅 3D 天空（暮色） */
-    --dusk: #39495f;
+    --dusk: #4c4a46;
 
-    /* 字体族 */
-    --font-display: 'Oswald', 'ShanHai XiaRi YanHuoW', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    --font-title: 'Oswald', 'ShanHai XiaRi YanHuoW', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    /* 纸与手绘描边 */
+    --paper-edge: #e0d0b4;
+    --paper-shadow: rgba(68, 48, 30, 0.2);
+    --sketch-line: rgba(74, 60, 46, 0.4);
+    --grain-opacity: 0.16;
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+
+    /* 字体族：中文继续用系统字体，不加载远程字体。 */
+    --font-display: 'Oswald', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-title: 'Oswald', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     --font-body: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
     --font-label: 'Oswald', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
@@ -95,119 +102,172 @@
     background: var(--accent-soft);
     color: var(--text);
   }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
-  /* 大厅遮罩：暗角 + 上下渐变，保证 3D 背景上的文字对比度 */
+  /* 手绘纸张的共用底纹：只影响背景，不叠加在文字上。 */
+  .paper-surface {
+    position: relative;
+    border-radius: inherit;
+    background-color: var(--surface);
+    background-image: var(--paper-grain);
+    background-blend-mode: multiply;
+    box-shadow: 0 6px 0 -2px var(--paper-edge), 0 12px 28px var(--paper-shadow);
+  }
+
+  /* 极低透明度的噪点，先于内容绘制。 */
+  .paper-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--paper-grain);
+    opacity: var(--grain-opacity);
+    pointer-events: none;
+  }
+
+  .paper-surface > * {
+    position: relative;
+  }
+
+  /* 大厅遮罩：暖墨渐变，让 3D 教室退到纸卡后面。 */
   .lobby-scrim {
     background:
-      radial-gradient(120% 90% at 50% 40%, transparent 0%, rgba(12, 20, 24, 0.35) 55%, rgba(12, 20, 24, 0.85) 100%),
+      radial-gradient(120% 90% at 50% 40%, transparent 0%, rgba(29, 34, 32, 0.34) 55%, rgba(29, 34, 32, 0.78) 100%),
       linear-gradient(
         to bottom,
-        rgba(12, 20, 24, 0.92) 0%,
-        rgba(12, 20, 24, 0.22) 22%,
-        rgba(12, 20, 24, 0.22) 70%,
-        rgba(12, 20, 24, 0.92) 100%
+        rgba(29, 34, 32, 0.82) 0%,
+        rgba(29, 34, 32, 0.16) 22%,
+        rgba(29, 34, 32, 0.2) 70%,
+        rgba(29, 34, 32, 0.82) 100%
       );
   }
 
-  /* 仪表网格：只用于内凹读数区内部 */
+  /* 方格纸：只用于预览与读数区内部。 */
   .instrument-grid {
+    background-color: var(--surface-inset);
     background-image:
-      linear-gradient(rgba(125, 211, 252, 0.07) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(125, 211, 252, 0.07) 1px, transparent 1px);
-    background-size: 24px 24px;
+      var(--paper-grain),
+      linear-gradient(rgba(74, 60, 46, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74, 60, 46, 0.08) 1px, transparent 1px);
+    background-size: 160px 160px, 24px 24px, 24px 24px;
+    background-blend-mode: multiply, normal, normal;
   }
 
-  /* 仪表式面板外壳 */
+  /* 手绘纸卡外壳：不规则圆角模拟剪裁的纸。 */
   .panel-shell {
     border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 14px;
-    backdrop-filter: blur(12px);
+    background-color: var(--surface);
+    background-image: var(--paper-grain);
+    background-blend-mode: multiply;
+    border-radius: 15px 11px 16px 9px;
+    box-shadow: 0 2px 0 var(--paper-edge), 0 10px 26px var(--paper-shadow);
   }
 
   .panel-shell--inset {
     background: var(--surface-inset);
-    border-radius: 12px;
+    border-radius: 12px 9px 13px 8px;
+    box-shadow: inset 0 2px 6px rgba(74, 60, 46, 0.08);
   }
 
   .panel-shell--raised {
     background: var(--surface-raised);
+    box-shadow: 0 4px 0 var(--paper-edge), 0 16px 32px var(--paper-shadow);
   }
 
-  /* 四角角标 */
+  /* 手绘角标：像纸卡的折角，仍是纯装饰。 */
   .panel-tick {
     position: absolute;
-    width: 10px;
-    height: 10px;
-    border-color: var(--border-strong);
+    width: 12px;
+    height: 12px;
+    border-color: var(--sketch-line);
     border-style: solid;
     border-width: 0;
-    opacity: 0.75;
+    opacity: 0.8;
     pointer-events: none;
   }
 
   .panel-tick--tl {
     top: 6px;
     left: 6px;
-    border-top-width: 1px;
-    border-left-width: 1px;
+    border-top-width: 2px;
+    border-left-width: 2px;
+    border-top-left-radius: 6px;
+    transform: rotate(-4deg);
   }
 
   .panel-tick--tr {
     top: 6px;
     right: 6px;
-    border-top-width: 1px;
-    border-right-width: 1px;
+    border-top-width: 2px;
+    border-right-width: 2px;
+    border-top-right-radius: 6px;
+    transform: rotate(3deg);
   }
 
   .panel-tick--bl {
     bottom: 6px;
     left: 6px;
-    border-bottom-width: 1px;
-    border-left-width: 1px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-bottom-left-radius: 6px;
+    transform: rotate(3deg);
   }
 
   .panel-tick--br {
     bottom: 6px;
     right: 6px;
-    border-bottom-width: 1px;
-    border-right-width: 1px;
+    border-bottom-width: 2px;
+    border-right-width: 2px;
+    border-bottom-right-radius: 6px;
+    transform: rotate(-4deg);
   }
 
-  /* 等宽索引铭牌 */
+  /* 手写标签式索引 */
   .panel-index {
     position: absolute;
     top: 10px;
-    right: 14px;
+    right: 15px;
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--text-dim);
+    color: var(--accent);
+    transform: rotate(-1.5deg);
     pointer-events: none;
   }
 
   .glass-panel {
     border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 14px;
-    backdrop-filter: blur(12px);
+    background-color: var(--surface);
+    background-image: var(--paper-grain);
+    background-blend-mode: multiply;
+    border-radius: 15px 11px 16px 9px;
+    box-shadow: 0 10px 26px var(--paper-shadow);
   }
 
   .glass-card {
     border: 1px solid var(--border);
-    background: var(--surface-raised);
-    border-radius: 12px;
-    backdrop-filter: blur(8px);
+    background-color: var(--surface-raised);
+    background-image: var(--paper-grain);
+    background-blend-mode: multiply;
+    border-radius: 13px 9px 14px 8px;
+    box-shadow: 0 2px 0 var(--paper-edge), 0 6px 16px var(--paper-shadow);
   }
 
+  /* 战斗 HUD 的半透明纸卡：保持读数清晰，又不糊住战场。 */
   .hud-panel {
-    border: 1px solid var(--sky-soft);
-    background: rgba(12, 20, 24, 0.72);
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-strong);
+    background: rgba(250, 243, 227, 0.88);
+    border-radius: 13px 9px 14px 8px;
+    box-shadow: 0 4px 14px rgba(29, 34, 32, 0.18);
+    backdrop-filter: blur(3px);
+    color: var(--text);
   }
 
   .label-caps {
@@ -215,22 +275,40 @@
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.14em;
     color: var(--text-muted);
   }
 
   .code-chip {
     font-family: var(--font-mono);
-    border: 1px solid var(--border);
-    background: var(--surface-inset);
+    border: 1px dashed var(--border-strong);
+    background: var(--surface-raised);
     color: var(--text);
+    border-radius: 7px 9px 6px 8px;
+    box-shadow: 0 1px 0 var(--paper-edge);
+  }
+
+  .skip-link {
+    position: fixed;
+    top: -60px;
+    left: 16px;
+    z-index: 50;
+    padding: 8px 14px;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
+    background: var(--surface-raised);
+    color: var(--text);
+    transition: top 160ms ease-out;
+  }
+
+  .skip-link:focus {
+    top: 12px;
   }
 }
 
 @layer utilities {
   .text-shadow-glow {
-    text-shadow: 0 0 22px rgba(232, 163, 61, 0.4);
+    text-shadow: 1px 1px 0 rgba(183, 97, 50, 0.18);
   }
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { PLANE_SCALE } from '@classroom-arena/shared';
 import { disposeObject3D } from '../game/scene/disposal';
-import { createPlaneMesh } from '../game/scene/planeFactory';
+import { createPlaneMesh, getPlanePropellers } from '../game/scene/planeFactory';
 
 interface PlanePreviewProps {
   planeId: string;
@@ -60,8 +60,7 @@ export function PlanePreview({ planeId, color }: PlanePreviewProps) {
       const frameTime = performance.now();
       plane.rotation.y += Math.min((frameTime - lastFrameTime) / 1000, 0.05) * 0.5;
       lastFrameTime = frameTime;
-      const propellers = plane.userData.propellers ?? (plane.userData.propeller ? [plane.userData.propeller] : []);
-      for (const propeller of propellers) propeller.rotation.z += 0.24;
+      for (const propeller of getPlanePropellers(plane)) propeller.rotation.z += 0.24;
       renderer.render(scene, camera);
     };
     if (!reducedMotion) animate();

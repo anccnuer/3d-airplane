@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { PLANE_SCALE } from '@classroom-arena/shared';
 import { createClassroom, type ClassroomScene } from './classroom';
 import { disposeObject3D } from './disposal';
-import { createPlaneMesh, type PlaneMesh } from './planeFactory';
+import { createPlaneMesh, getPlanePropellers, type PlaneMesh } from './planeFactory';
 import { createAmbientLights } from './lighting';
 import { sharedRenderer } from '../render/Renderer';
 
@@ -152,8 +152,9 @@ export class LobbyScene {
       patrol.mesh.position.set(x, 6 + Math.sin(t * 2) * 0.6, z);
       patrol.mesh.rotation.set(0, Math.atan2(directionX, directionZ), Math.sin(t * 2) * 0.18);
 
-      const propeller = patrol.mesh.userData.propeller;
-      if (propeller) propeller.rotation.z += dt * 6;
+      for (const propeller of getPlanePropellers(patrol.mesh)) {
+        propeller.rotation.z += dt * 6;
+      }
     }
   }
 

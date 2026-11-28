@@ -17,7 +17,7 @@ import { sharedRenderer } from './render/Renderer';
 import { createClassroom } from './scene/classroom';
 import { disposeObject3D } from './scene/disposal';
 import { Effects } from './scene/effects';
-import { createPlaneMesh, type PlaneMesh } from './scene/planeFactory';
+import { createPlaneMesh, getPlanePropellers, type PlaneMesh } from './scene/planeFactory';
 import { InputSystem } from './systems/input';
 import { JitterBuffer } from './systems/jitterBuffer';
 import { RenderStateSystem } from './systems/renderState';
@@ -269,8 +269,9 @@ export class ThreeGame {
       mesh.position.set(...view.position);
       mesh.rotation.set(-view.rotation[1], view.rotation[0], view.rotation[2]);
 
-      const propeller = mesh.userData.propeller;
-      if (propeller) propeller.rotation.z += dt * (8 + player.speed * 0.8);
+      for (const propeller of getPlanePropellers(mesh)) {
+        propeller.rotation.z += dt * (8 + player.speed * 0.8);
+      }
     }
 
     for (const [id, view] of this.planes) {
